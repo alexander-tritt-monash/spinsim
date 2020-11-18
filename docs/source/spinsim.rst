@@ -12,7 +12,7 @@ Subpackages
 Module contents
 ---------------
 
-.. automodule:: spinsim.spinsim
+.. automodule:: spinsim
    :members:
    :undoc-members:
    :show-inheritance:

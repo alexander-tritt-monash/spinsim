@@ -102,4 +102,4 @@ intersphinx_mapping = {
     'matplotlib': ('http://matplotlib.sourceforge.net/', None)
     }
 
-add_module_names = False
+# add_module_names = False

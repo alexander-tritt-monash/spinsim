@@ -16,7 +16,7 @@ Example 1: Spin half Larmor precession
 ======================================
 """
 # Define a numba.cuda compatible source sampling function
-def get_source_larmor(time_sample, simulation_index, source_sample):
+def get_source_larmor(time_sample, source_modifier, source_sample):
     source_sample[0] = 0            # Zero source in x direction
     source_sample[1] = 0            # Zero source in y direction
     source_sample[2] = 1000         # Split spin z eigenstates by 1kHz
@@ -74,11 +74,11 @@ Example 2: Spin one Rabi flopping
 # The math, or cmath library must be used over numpy for the source function to be cuda compilable
 import math
 
-def get_source_rabi(time_sample, simulation_index, source_sample):
+def get_source_rabi(time_sample, source_modifier, source_sample):
     # Dress atoms from the x direction, Rabi flopping at 1kHz
-    source_sample[0] = 2000*math.cos(math.tau*20e3*simulation_index*time_sample)
+    source_sample[0] = 2000*math.cos(math.tau*20e3*source_modifier*time_sample)
     source_sample[1] = 0                        # Zero source in y direction
-    source_sample[2] = 20e3*simulation_index    # Split spin z eigenstates by 700kHz
+    source_sample[2] = 20e3*source_modifier     # Split spin z eigenstates by 700kHz
     source_sample[3] = 0                        # Zero quadratic shift, found in spin one systems
 
 # Return a solver which uses this function

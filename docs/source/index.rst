@@ -26,6 +26,50 @@ Examples of use
 Basic example: Spin half Larmor precession
 ------------------------------------------
 
+Full code
+.........
+
+.. code-block:: python
+
+   import spinsim
+   import numpy as np
+   import matplotlib.pyplot as plt
+
+   def get_source_larmor(time_sample, source_modifier, source_sample):
+      source_sample[0] = 0            # Zero source in x direction
+      source_sample[1] = 0            # Zero source in y direction
+      source_sample[2] = 1000         # Split spin z eigenstates by 1kHz
+
+   simulator_larmor = spinsim.Simulator(get_source_larmor, spinsim.SpinQuantumNumber.HALF)
+
+   time_step_coarse = 500e-9
+   time_step_fine = 100e-9
+   time_end_points = np.asarray([0e-3, 100e-3], np.double)
+
+   time_index_max = int((time_end_points[1] - time_end_points[0])/time_step_coarse)
+   time = np.empty(time_index_max, np.double)
+
+   state_init = np.asarray([1/np.sqrt(2), 1/np.sqrt(2)], np.cdouble)
+   state = np.empty((time_index_max, 2), np.cdouble)
+   spin = np.empty((time_index_max, 3), np.double)
+   time_evolution = np.empty((time_index_max, 2, 2), np.cdouble)
+
+   simulator_larmor.get_time_evolution(0, time, time_end_points, time_step_fine, time_step_coarse, time_evolution)
+   simulator_larmor.get_state(state_init, state, time_evolution)
+   simulator_larmor.get_spin(state, spin)
+
+   plt.figure()
+   plt.plot(time, spin)
+   plt.legend(["x", "y", "z"])
+   plt.xlim(0e-3, 2e-3)
+   plt.xlabel("time (s)")
+   plt.ylabel("spin expectation (hbar)")
+   plt.title("Spin projection for Larmor precession")
+   plt.show()
+
+Explanation
+...........
+
 The most basic system that :mod:`spinsim` can simulate is that of Larmor precession of a spin half system. Here, the two spin z projection eigenstates are split by a source potential :math:`f_L`, measured in Hz.
 
 .. note::
@@ -89,36 +133,33 @@ Let's pick :math:`f_L = 1\mathrm{kHz}`. We can write this as a python function a
 .. code-block:: python
 
    # Define a numba.cuda compatible source sampling function
-   def get_source_larmor(time_sample, simulation_index, source_sample):
+   def get_source_larmor(time_sample, source_modifier, source_sample):
       source_sample[0] = 0            # Zero source in x direction
       source_sample[1] = 0            # Zero source in y direction
       source_sample[2] = 1000         # Split spin z eigenstates by 1kHz
 
-This function has three inputs. `time_sample` and `source_sample` are the equivalent of :math:`t` and :math:`(f_x, f_y, f_z)` from before. In particular, `source_sample` is a numpy array of doubles, with indices 0, 1, 2 representing for indices :math:`x, y, z` respectively. `simulation_index` is a secondary input to the function, which we will explore in the next example.
+This function has three inputs. `time_sample` and `source_sample` are the equivalent of :math:`t` and :math:`(f_x, f_y, f_z)` from before. In particular, `source_sample` is a numpy array of doubles, with indices 0, 1, 2 representing for indices :math:`x, y, z` respectively. `source_modifier` is a secondary input to the function, which we will explore in the next example.
 
-We can then use the function :func:`spinsim.time_evolver_factory()` to return an integrator with this specific function built in. This integrator is built using :mod:`numba.cuda`, and runs on a cuda capable gpu.
+We can then construct an object of :class:`spinsim.Simulator` to return an integrator with this specific function built in. This integrator is built using :mod:`numba.cuda`, and runs on a cuda capable gpu.
 
 .. code-block:: python
 
    # Return a solver which uses this function
-   get_time_evolution_larmor = spinsim.time_evolver_factory(\
-      get_source_larmor,\
-      spinsim.SpinQuantumNumber.HALF\
-   )
+   simulator_larmor = spinsim.Simulator(get_source_larmor, spinsim.SpinQuantumNumber.HALF)
 
 .. warning::
    Since the source function is built into a cuda kernel using :mod:`numba.cuda`, it must be compatible with the restrictions of :func:`numba.cuda.jit`. As an example, :mod:`math` functions must be used over :mod:`numpy` math functions, as the latter are incompatible.
 
-:func:`spinsim.time_evolver_factory()` contains many options that can be used to customise which features are used by the integrator.
+The constructor of :class:`spinsim.Simulator` contains many options that can be used to customise which features are used by the integrator.
 
 The next step is to define some simulation parameters, as well as the input and output. Firstly, we must decide on some time steps that are to be used. `time_step_coarse` defines the resolution of the output time series for the time evolution operator, state and spin. `time_step_fine` determines the internal time step of the integrator. `time_step_coarse` must be an integer multiple of `time_step_fine`. We also need to define the times when the experiment starts and ends. Below we have chosen to have a `time_step_fine` of 10ns, a `time_step_coarse` of 100ns, a start time of 0ms, and an end time of 100ms.
 
 .. code-block:: python
 
-   # The resultion of the output of the simulation is 100ns
-   time_step_coarse = 100e-9
-   # The resultion of the integration in the simulation is 10ns
-   time_step_fine = 10e-9
+   # The resultion of the output of the simulation is 500ns
+   time_step_coarse = 500e-9
+   # The resultion of the integration in the simulation is 100ns
+   time_step_fine = 100e-9
    # Run between times of 0ms and 100ms.
    time_end_points = np.asarray([0e-3, 100e-3], np.double)
 
@@ -144,24 +185,13 @@ Next we define empty arrays for the state of the system (wavefunction), as well 
    # Define an empty array to write the time evolution operator to
    time_evolution = np.empty((time_index_max, 2, 2), np.cdouble)
 
-Finally, we calculate some parameters that need to be given when the gpu kernel `get_time_evolution_larmor` is executed, just so that the right number of threads are created on the gpu. One can use this as boiler plate code at first, but changing `threads_per_block` can be used to optimise performance to an extent. This means that there will be enough gpu threads executed to calculate a time evolution operator for every sample time step, in parallel, on the gpu. 
-
-.. code-block:: python
-
-   # Set up the gpu to have blocks of size 64
-   threads_per_block = 64
-   blocks_per_grid = (time_index_max + (threads_per_block - 1)) // threads_per_block
-
-.. note::
-   The reason these are needed is because of the structure of how threads are run on a gpu. Instructions on a gpu are run simultaneously for 32 threads at a time, and this group of 32 threads in hardware is called a warp. Many warps can be loaded onto and run on a gpu at once. All threads in a warp are chosen from the same block, which is the software abstraction of a warp. All blocks must contain the same number of threads. Blocks are then organised into a structure called a grid. So when a cuda kernel, like the one compiled by :func:`spinsim.time_evolver_factory()` is executed, the gpu must be told how many threads are in each block (`threads_per_block`), and the total number of blocks that are to be executed (`blocks_per_grid`).
-
-Now that everything is set up, the time evolution operator can be found between each sample using our generated function `get_time_evolution_larmor`.
+Now that everything is set up, the time evolution operator can be found between each sample using our object `simulator_larmor`.
 
 .. code-block:: python
 
    # Find the time evolution operator using our settings
-   get_time_evolution_larmor[blocks_per_grid, threads_per_block](\
-      0,\
+   simulator_larmor.get_time_evolution(\
+      0,
       time,\
       time_end_points,\
       time_step_fine,\
@@ -169,19 +199,19 @@ Now that everything is set up, the time evolution operator can be found between 
       time_evolution\
    )
 
-Now that we have the time evolution operator, we can use it to find the state at each point in time. This is done with a regular :func:`numba.jit()`ed function.
+Now that we have the time evolution operator, we can use it to find the state at each point in time. This is done with a regular :func:`numba.jit()`\ed function.
 
 .. code-block:: python
 
    # Chain the time evolution operators together to find the state at each point in time
-   spinsim.get_state(state_init, state, time_evolution)
+   simulator_larmor.get_state(state_init, state, time_evolution)
 
 And finally, we can calculate the expected spin of the system, in parallel, on the gpu.
 
 .. code-block:: python
 
    # Calculate the spin at each point in time
-   spinsim.get_spin[blocks_per_grid, threads_per_block](state, spin)
+   simulator_larmor.get_spin(state, spin)
 
 Has this worked? We can plot the results using :mod:`matplotlib.pyplot` (zoomed in to show details),
 
@@ -205,6 +235,77 @@ Here we see that indeed, the bloch vector is precessing anticlockwise at a frequ
 
 More advanced example: Spin one Rabi flopping
 ---------------------------------------------
+
+Full code
+.........
+
+.. code-block::
+
+   import spinsim.spinsim as spinsim
+   import numpy as np
+   import matplotlib.pyplot as plt
+   import math
+   from numba import cuda
+
+   def get_source_rabi(time_sample, source_modifier, source_sample):
+      # Dress atoms from the x direction, Rabi flopping at 1kHz
+      source_sample[0] = 2000*math.cos(math.tau*20e3*source_modifier*time_sample)
+      source_sample[1] = 0                        # Zero source in y direction
+      source_sample[2] = 20e3*source_modifier     # Split spin z eigenstates by 700kHz
+      source_sample[3] = 0                        # Zero quadratic shift, found in spin one systems
+
+   simulator_rabi = spinsim.Simulator(get_source_rabi, spinsim.SpinQuantumNumber.ONE)
+
+   time_step_coarse = 500e-9
+   time_step_fine = 100e-9
+   time_end_points = np.asarray([0e-3, 100e-3], np.double)
+   time_index_max = int((time_end_points[1] - time_end_points[0])/time_step_coarse)
+
+   state_init = np.asarray([1, 0, 0], np.cdouble)
+   state = np.empty((time_index_max, 3), np.cdouble)
+
+   time_evolution = cuda.device_array((time_index_max, 3, 3), np.cdouble)
+   time = cuda.device_array(time_index_max, np.double)
+   spin = cuda.device_array((time_index_max, 3), np.double)
+
+   simulator_rabi.get_time_evolution(1, time, cuda.to_device(time_end_points), time_step_fine, time_step_coarse, time_evolution)
+   time = time.copy_to_host()
+   time_evolution = time_evolution.copy_to_host()
+   simulator_rabi.get_state(state_init, state, time_evolution)
+   simulator_rabi.get_spin(cuda.to_device(state), spin)
+   spin = spin.copy_to_host()
+
+   plt.figure()
+   plt.plot(time, spin)
+   plt.legend(["x", "y", "z"])
+   plt.xlim(0e-3, 2e-3)
+   plt.xlabel("time (s)")
+   plt.ylabel("spin expectation (hbar)")
+   plt.title("Spin projection for Rabi flopping")
+   plt.show()
+
+   time_evolution = cuda.device_array((time_index_max, 3, 3), np.cdouble)
+   time = cuda.device_array(time_index_max, np.double)
+   spin = cuda.device_array((time_index_max, 3), np.double)
+
+   simulator_rabi.get_time_evolution(2, time, cuda.to_device(time_end_points), time_step_fine, time_step_coarse, time_evolution)
+   time = time.copy_to_host()
+   time_evolution = time_evolution.copy_to_host()
+   simulator_rabi.get_state(state_init, state, time_evolution)
+   simulator_rabi.get_spin(cuda.to_device(state), spin)
+   spin = spin.copy_to_host()
+
+   plt.figure()
+   plt.plot(time, spin)
+   plt.legend(["x", "y", "z"])
+   plt.xlim(0e-3, 2e-3)
+   plt.xlabel("time (s)")
+   plt.ylabel("spin expectation (hbar)")
+   plt.title("Spin projection for Rabi flopping")
+   plt.show()
+
+Explanation
+...........
 
 Now that we have confirmed that the most basic quantum system can be simulated using :mod:`spinsim`, we can explore the more advanced, and more optimised ways it can be used. For a start, :mod:`spinsim` was designed for use simulating spin one systems, so we should try that out. Also to note is that many of the ways of doing things with memory in the basic example were very sub-optimal, so we should look at ways to fix that.
 
@@ -263,11 +364,11 @@ Just as before, we must define a source function, this time being time dependent
 .. code-block:: python
 
    def get_source_rabi(time_sample, simulation_index, source_sample):
-    # Dress atoms from the x direction, Rabi flopping at 1kHz
-    source_sample[0] = 2000*math.cos(math.tau*20e3*time_sample)
-    source_sample[1] = 0      # Zero source in y direction
-    source_sample[2] = 20e3   # Split spin z eigenstates by 20kHz
-    source_sample[3] = 0      # Zero quadratic shift, found in spin one systems
+      # Dress atoms from the x direction, Rabi flopping at 1kHz
+      source_sample[0] = 2000*math.cos(math.tau*20e3*time_sample)
+      source_sample[1] = 0      # Zero source in y direction
+      source_sample[2] = 20e3   # Split spin z eigenstates by 20kHz
+      source_sample[3] = 0      # Zero quadratic shift, found in spin one systems
 
 This time there is a fourth entry in `source_sample`, which represents the quadrtic shift :math:`f_q(t)`. Here we have chosen a Larmor frequency :math:`f_L` of 20kHz, and a Rabi frequency :math:`f_R` of 1kHz.
 
@@ -276,32 +377,32 @@ This time there is a fourth entry in `source_sample`, which represents the quadr
 
    .. code-block:: python
 
-      def get_source_rabi(time_sample, simulation_index, source_sample):
-      # Dress atoms from the x direction, Rabi flopping at 1kHz
-      source_sample[0] = 2000*np.cos(np.tau*20e3*time_sample)
-      source_sample[1] = 0       # Zero source in y direction
-      source_sample[2] = 20e3    # Split spin z eigenstates by 20kHz
-      source_sample[3] = 0       # Zero quadratic shift, found in spin one systems
+      def get_source_rabi(time_sample, source_modifier, source_sample):
+         # Dress atoms from the x direction, Rabi flopping at 1kHz
+         source_sample[0] = 2000*np.cos(np.tau*20e3*time_sample)
+         source_sample[1] = 0       # Zero source in y direction
+         source_sample[2] = 20e3    # Split spin z eigenstates by 20kHz
+         source_sample[3] = 0       # Zero quadratic shift, found in spin one systems
 
-Before we move on, suppose that we want to execute multiple similar simulations. For example, we could run the current simulation, then one that is exactly the same, but with double the Larmor frequency :math:`f_L`. One could do this by hard coding another source function with this change and then compiling another solver, but this takes time and is inefficient. Instead, we can use the parameter `simulation_index`.
+Before we move on, suppose that we want to execute multiple similar simulations. For example, we could run the current simulation, then one that is exactly the same, but with double the Larmor frequency :math:`f_L`. One could do this by hard coding another source function with this change and then compiling another solver, but this takes time and is inefficient. Instead, we can use the parameter `source_modifier`.
 
 .. code-block:: python
 
-   def get_source_rabi(time_sample, simulation_index, source_sample):
+   def get_source_rabi(time_sample, source_modifier, source_sample):
       # Dress atoms from the x direction, Rabi flopping at 1kHz
-      source_sample[0] = 2000*math.cos(math.tau*20e3*simulation_index*time_sample)
+      source_sample[0] = 2000*math.cos(math.tau*20e3*source_modifier*time_sample)
       source_sample[1] = 0                        # Zero source in y direction
-      source_sample[2] = 20e3*simulation_index    # Split spin z eigenstates by 20kHz
+      source_sample[2] = 20e3*source_modifier     # Split spin z eigenstates by 20kHz
       source_sample[3] = 0                        # Zero quadratic shift
 
-The value of each `simulation_index` can be input whenever the integration function is called. In general, this can be used to sweep through values for any number of simulations, saving compile time.
+The value of each `source_modifier` can be input whenever the integration function is called. In general, this can be used to sweep through values for any number of simulations, saving compile time.
 
-Let's build our function, now spin one.
+Let's build our simulator object, now spin one.
 
 .. code-block:: python
 
    # Return a solver which uses this function
-   get_time_evolution_rabi = spinsim.time_evolver_factory(\
+   simulator_rabi = spinsim.Simulator(\
       get_source_rabi,\
       spinsim.SpinQuantumNumber.ONE\
    )
@@ -310,10 +411,10 @@ We set up some of the parameters as before, but can make some optimisations for 
 
 .. code-block:: python
 
-   # The resultion of the output of the simulation is 100ns
-   time_step_coarse = 100e-9
-   # The resultion of the integration in the simulation is 10ns
-   time_step_fine = 10e-9
+   # The resolution of the output of the simulation is 500ns
+   time_step_coarse = 500e-9
+   # The resolution of the integration in the simulation is 100ns
+   time_step_fine = 100e-9
    # Run between times of 0ms and 100ms.
    time_end_points = np.asarray([0e-3, 100e-3], np.double)
 
@@ -348,7 +449,7 @@ We are now ready to execute. There are a few things to note. Firstly, `simulatio
 .. code-block:: python
 
    # Find the time evolution operator using our settings
-   get_time_evolution_rabi[blocks_per_grid, threads_per_block](\
+   simulator_rabi.get_time_evolution(\
       1,\
       time,\
       cuda.to_device(time_end_points),\
@@ -370,10 +471,10 @@ The same steps as  before can be made to obtain the final spin. Similar memory o
 .. code-block:: python
 
    # Chain the time evolution operators together to find the state at each point in time
-   spinsim.get_state(state_init, state, time_evolution)
+   simulator_rabi.get_state(state_init, state, time_evolution)
 
    # Calculate the spin at each point in time
-   spinsim.get_spin[blocks_per_grid, threads_per_block](cuda.to_device(state), spin)
+   simulator_rabi.get_spin(cuda.to_device(state), spin)
 
    # Get spin off the gpu
    spin = spin.copy_to_host()
@@ -410,7 +511,7 @@ Finally, let's run another experiment using the same compiled function. This wil
    spin = cuda.device_array((time_index_max, 3), np.double)
 
    # Find the time evolution operator using our settings
-   get_time_evolution_rabi[blocks_per_grid, threads_per_block](
+   simulator_rabi.get_time_evolution(
       2,\
       time,\
       cuda.to_device(time_end_points),\
@@ -424,10 +525,10 @@ Finally, let's run another experiment using the same compiled function. This wil
    time_evolution = time_evolution.copy_to_host()
 
    # Chain the time evolution operators together to find the state at each point in time
-   spinsim.get_state(state_init, state, time_evolution)
+   simulator_rabi.get_state(state_init, state, time_evolution)
 
    # Calculate the spin at each point in time
-   spinsim.get_spin[blocks_per_grid, threads_per_block](cuda.to_device(state), spin)
+   simulator_rabi.get_spin[blocks_per_grid, threads_per_block](cuda.to_device(state), spin)
 
    # Get spin off the gpu
    spin = spin.copy_to_host()
