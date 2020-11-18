@@ -1,7 +1,7 @@
 import colorama         # Colourful terminal
 colorama.init()
 
-import spinsim.spinsim as spinsim
+import spinsim
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -76,7 +76,7 @@ import math
 
 def get_source_rabi(time_sample, simulation_index, source_sample):
     # Dress atoms from the x direction, Rabi flopping at 1kHz
-    source_sample[0] = 2000*np.cos(math.tau*20e3*simulation_index*time_sample)
+    source_sample[0] = 2000*math.cos(math.tau*20e3*simulation_index*time_sample)
     source_sample[1] = 0                        # Zero source in y direction
     source_sample[2] = 20e3*simulation_index    # Split spin z eigenstates by 700kHz
     source_sample[3] = 0                        # Zero quadratic shift, found in spin one systems
