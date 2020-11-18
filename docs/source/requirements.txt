@@ -1,0 +1,2 @@
+numba==0.50.1
+-f /docs/source/_ext/ numbadoc

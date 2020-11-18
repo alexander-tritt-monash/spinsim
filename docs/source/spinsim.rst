@@ -9,15 +9,6 @@ Subpackages
 
    spinsim.utilities
 
-Submodules
-----------
-
-.. toctree::
-   :maxdepth: 4
-
-   spinsim.benchmark
-   spinsim.manager
-
 Module contents
 ---------------
 
