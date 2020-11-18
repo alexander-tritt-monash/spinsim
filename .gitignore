@@ -1,0 +1,10 @@
+build/
+
+article/article.aux
+article/article.fdb_latexmk
+article/article.fls
+article/article.log
+article/article.out
+article/article.synctex.gz
+
+__pycache__/
