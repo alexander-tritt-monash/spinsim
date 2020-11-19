@@ -35,11 +35,11 @@ sys.path.append(os.path.abspath("../../../"))
 # -- Project information -----------------------------------------------------
 
 project = 'spinsim'
-copyright = '2020, Alexander Tritt'
+copyright = '2020, Monash University'
 author = 'Alexander Tritt'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1'
+release = '0.1.1'
 
 
 # -- General configuration ---------------------------------------------------
@@ -48,11 +48,12 @@ release = '0.1'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinx.ext.autodoc",   # Generate documentation from code
-    "sphinx.ext.napoleon",  # Use numpy standard formatting
-    "sphinx_rtd_theme",     # Documentation theme
-    "numbadoc",             # Is able to document numba
-    "sphinx.ext.intersphinx"
+    "sphinx.ext.autodoc",       # Generate documentation from code
+    "sphinx.ext.napoleon",      # Use numpy standard formatting
+    "sphinx_rtd_theme",         # Documentation theme
+    "numbadoc",                 # Is able to document numba
+    "sphinx.ext.intersphinx",   # Link to other documentation
+    "sphinxcontrib.bibtex"      # Bibtex support
 ]
 
 autoclass_content = 'both'
