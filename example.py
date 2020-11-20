@@ -2,63 +2,37 @@ import spinsim
 import numpy as np
 import matplotlib.pyplot as plt
 import math
-from numba import cuda
 
-def get_source_rabi(time_sample, source_modifier, source_sample):
-   # Dress atoms from the x direction, Rabi flopping at 1kHz
-   source_sample[0] = 2000*math.cos(math.tau*20e3*source_modifier*time_sample)
-   source_sample[1] = 0                        # Zero source in y direction
-   source_sample[2] = 20e3*source_modifier     # Split spin z eigenstates by 700kHz
-   source_sample[3] = 0                        # Zero quadratic shift, found in spin one systems
+def get_source(time_sample, source_modifier, source_sample):
+   source_sample[0] = 2000*math.exp(-((time_sample - 0.05)/0.01)**2)*math.cos(math.tau*700e3*time_sample)
+   source_sample[1] = 0
+   source_sample[2] = 700e3
 
-simulator_rabi = spinsim.Simulator(get_source_rabi, spinsim.SpinQuantumNumber.ONE)
+simulator_larmor = spinsim.Simulator(get_source_larmor, spinsim.SpinQuantumNumber.HALF)
 
 time_step_coarse = 500e-9
 time_step_fine = 100e-9
 time_end_points = np.asarray([0e-3, 100e-3], np.double)
+
 time_index_max = int((time_end_points[1] - time_end_points[0])/time_step_coarse)
+time = np.empty(time_index_max, np.double)
 
-state_init = np.asarray([1, 0, 0], np.cdouble)
-state = np.empty((time_index_max, 3), np.cdouble)
+state_init = np.asarray([1, 0], np.cdouble)
+state = np.empty((time_index_max, 2), np.cdouble)
+spin = np.empty((time_index_max, 3), np.double)
+time_evolution = np.empty((time_index_max, 2, 2), np.cdouble)
 
-time_evolution = cuda.device_array((time_index_max, 3, 3), np.cdouble)
-time = cuda.device_array(time_index_max, np.double)
-spin = cuda.device_array((time_index_max, 3), np.double)
-
-simulator_rabi.get_time_evolution(1, time, cuda.to_device(time_end_points), time_step_fine, time_step_coarse, time_evolution)
-time = time.copy_to_host()
-time_evolution = time_evolution.copy_to_host()
-simulator_rabi.get_state(state_init, state, time_evolution)
-simulator_rabi.get_spin(cuda.to_device(state), spin)
-spin = spin.copy_to_host()
+simulator_larmor.get_time_evolution(0, time, time_end_points, time_step_fine, time_step_coarse, time_evolution)
+simulator_larmor.get_state(state_init, state, time_evolution)
+simulator_larmor.get_spin(state, spin)
 
 plt.figure()
 plt.plot(time, spin)
 plt.legend(["x", "y", "z"])
-plt.xlim(0e-3, 2e-3)
+# plt.xlim(0e-3, 2e-3)
 plt.xlabel("time (s)")
 plt.ylabel("spin expectation (hbar)")
-plt.title("Spin projection for Rabi flopping")
-plt.show()
-
-time_evolution = cuda.device_array((time_index_max, 3, 3), np.cdouble)
-time = cuda.device_array(time_index_max, np.double)
-spin = cuda.device_array((time_index_max, 3), np.double)
-
-simulator_rabi.get_time_evolution(2, time, cuda.to_device(time_end_points), time_step_fine, time_step_coarse, time_evolution)
-time = time.copy_to_host()
-time_evolution = time_evolution.copy_to_host()
-simulator_rabi.get_state(state_init, state, time_evolution)
-simulator_rabi.get_spin(cuda.to_device(state), spin)
-spin = spin.copy_to_host()
-
-plt.figure()
-plt.plot(time, spin)
-plt.legend(["x", "y", "z"])
-plt.xlim(0e-3, 2e-3)
-plt.xlabel("time (s)")
-plt.ylabel("spin expectation (hbar)")
-plt.title("Spin projection for Rabi flopping")
+# plt.title("Spin projection for Larmor precession")
 plt.show()
 
 

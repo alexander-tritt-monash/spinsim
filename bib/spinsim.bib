@@ -1,4 +1,40 @@
 
+@article{auer_magnus_2018,
+	title = {Magnus integrators on multicore {CPUs} and {GPUs}},
+	volume = {228},
+	issn = {0010-4655},
+	url = {http://www.sciencedirect.com/science/article/pii/S0010465518300584},
+	doi = {10.1016/j.cpc.2018.02.019},
+	abstract = {In the present paper we consider numerical methods to solve the discrete Schrödinger equation with a time dependent Hamiltonian (motivated by problems encountered in the study of spin systems). We will consider both short-range interactions, which lead to evolution equations involving sparse matrices, and long-range interactions, which lead to dense matrices. Both of these settings show very different computational characteristics. We use Magnus integrators for time integration and employ a framework based on Leja interpolation to compute the resulting action of the matrix exponential. We consider both traditional Magnus integrators (which are extensively used for these types of problems in the literature) as well as the recently developed commutator-free Magnus integrators and implement them on modern CPU and GPU (graphics processing unit) based systems. We find that GPUs can yield a significant speed-up (up to a factor of 10 in the dense case) for these types of problems. In the sparse case GPUs are only advantageous for large problem sizes and the achieved speed-ups are more modest. In most cases the commutator-free variant is superior but especially on the GPU this advantage is rather small. In fact, none of the advantage of commutator-free methods on GPUs (and on multi-core CPUs) is due to the elimination of commutators. This has important consequences for the design of more efficient numerical methods.},
+	language = {en},
+	urldate = {2020-10-01},
+	journal = {Computer Physics Communications},
+	author = {Auer, N. and Einkemmer, L. and Kandolf, P. and Ostermann, A.},
+	month = jul,
+	year = {2018},
+	keywords = {Commutator-free Magnus integrators, Graphic processing unit, Heisenberg model, Magnus integrators, Parallelization, Performance comparison},
+	pages = {115--122},
+	file = {ScienceDirect Snapshot:D\:\\Zotero\\storage\\ZIPS5DQ5\\S0010465518300584.html:text/html;ScienceDirect Full Text PDF:D\:\\Zotero\\storage\\GJQVY859\\Auer et al. - 2018 - Magnus integrators on multicore CPUs and GPUs.pdf:application/pdf}
+}
+
+@inproceedings{lam_numba_2015,
+	address = {Austin, Texas},
+	title = {Numba: a {LLVM}-based {Python} {JIT} compiler},
+	isbn = {978-1-4503-4005-2},
+	shorttitle = {Numba},
+	url = {http://dl.acm.org/citation.cfm?doid=2833157.2833162},
+	doi = {10.1145/2833157.2833162},
+	abstract = {Dynamic, interpreted languages, like Python, are attractive for domain-experts and scientists experimenting with new ideas. However, the performance of the interpreter is often a barrier when scaling to larger data sets. This paper presents a just-in-time compiler for Python that focuses in scientiﬁc and array-oriented computing. Starting with the simple syntax of Python, Numba compiles a subset of the language into eﬃcient machine code that is comparable in performance to a traditional compiled language. In addition, we share our experience in building a JIT compiler using LLVM[1].},
+	language = {en},
+	urldate = {2020-10-08},
+	booktitle = {Proceedings of the {Second} {Workshop} on the {LLVM} {Compiler} {Infrastructure} in {HPC} - {LLVM} '15},
+	publisher = {ACM Press},
+	author = {Lam, Siu Kwan and Pitrou, Antoine and Seibert, Stanley},
+	year = {2015},
+	pages = {1--6},
+	file = {Lam et al. - 2015 - Numba a LLVM-based Python JIT compiler.pdf:D\:\\Zotero\\storage\\RCGMJ52U\\Lam et al. - 2015 - Numba a LLVM-based Python JIT compiler.pdf:application/pdf}
+}
+
 @article{hamley_spin-nematic_2012,
 	title = {Spin-nematic squeezed vacuum in a quantum gas},
 	volume = {8},
@@ -33,4 +69,52 @@
 	note = {Publisher: IOP Publishing},
 	pages = {065303},
 	file = {IOP Full Text PDF:D\:\\Zotero\\storage\\5ZS7FQSM\\Di et al. - 2010 - Dipole–quadrupole decomposition of two coupled spi.pdf:application/pdf}
+}
+
+@article{nickolls_scalable_2008,
+	title = {Scalable {Parallel} {Programming} with {CUDA}: {Is} {CUDA} the parallel programming model that application developers have been waiting for?},
+	volume = {6},
+	issn = {1542-7730},
+	shorttitle = {Scalable {Parallel} {Programming} with {CUDA}},
+	url = {https://doi.org/10.1145/1365490.1365500},
+	doi = {10.1145/1365490.1365500},
+	abstract = {The advent of multicore CPUs and manycore GPUs means that mainstream processor chips are now parallel systems. Furthermore, their parallelism continues to scale with Moore’s law. The challenge is to develop mainstream application software that transparently scales its parallelism to leverage the increasing number of processor cores, much as 3D graphics applications transparently scale their parallelism to manycore GPUs with widely varying numbers of cores.},
+	number = {2},
+	urldate = {2020-11-20},
+	journal = {Queue},
+	author = {Nickolls, John and Buck, Ian and Garland, Michael and Skadron, Kevin},
+	month = mar,
+	year = {2008},
+	pages = {40--53},
+	file = {Full Text PDF:D\:\\Zotero\\storage\\TTDS8369\\Nickolls et al. - 2008 - Scalable Parallel Programming with CUDA Is CUDA t.pdf:application/pdf}
+}
+
+@article{huang_quantum_2014,
+	title = {Quantum {Metrology} with {Cold} {Atoms}},
+	volume = {2},
+	url = {http://arxiv.org/abs/1308.6092},
+	doi = {10.1142/9789814590174_0007},
+	abstract = {Quantum metrology is the science that aims to achieve precision measurements by making use of quantum principles. Attribute to the well-developed techniques of manipulating and detecting cold atoms, cold atomic systems provide an excellent platform for implementing precision quantum metrology. In this chapter, we review the general procedures of quantum metrology and some experimental progresses in quantum metrology with cold atoms. Firstly, we give the general framework of quantum metrology and the calculation of quantum Fisher information, which is the core of quantum parameter estimation. Then, we introduce the quantum interferometry with single and multiparticle states. In particular, for some typical multiparticle states, we analyze their ultimate precision limits and show how quantum entanglement could enhance the measurement precision beyond the standard quantum limit. Further, we review some experimental progresses in quantum metrology with cold atomic systems.},
+	urldate = {2020-11-20},
+	journal = {arXiv:1308.6092 [cond-mat, physics:physics, physics:quant-ph]},
+	author = {Huang, Jiahao and Wu, Shuyuan and Zhong, Honghua and Lee, Chaohong},
+	month = may,
+	year = {2014},
+	note = {arXiv: 1308.6092},
+	keywords = {Condensed Matter - Quantum Gases, Physics - Atomic Physics, Quantum Physics},
+	pages = {365--415},
+	annote = {Comment: 53 pages, 9 figures, revised version},
+	file = {arXiv Fulltext PDF:D\:\\Zotero\\storage\\DQ8A2X28\\Huang et al. - 2014 - Quantum Metrology with Cold Atoms.pdf:application/pdf;arXiv.org Snapshot:D\:\\Zotero\\storage\\ZFRQ9N3D\\1308.html:text/html}
+}
+
+@misc{morris_qcmonkatomicpy_2018,
+	title = {{QCmonk}/{Atomicpy}},
+	copyright = {MIT License         ,                 MIT License},
+	url = {https://github.com/QCmonk/Atomicpy},
+	abstract = {Simple simulation system for two level systems. Contribute to QCmonk/Atomicpy development by creating an account on GitHub.},
+	urldate = {2020-11-20},
+	author = {Morris, Joshua},
+	month = dec,
+	year = {2018},
+	note = {original-date: 2018-08-03T03:07:58Z}
 }

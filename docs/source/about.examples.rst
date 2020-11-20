@@ -1,3 +1,5 @@
+.. _examples:
+
 Examples of use
 ===============
 
@@ -527,7 +529,7 @@ which results in
 
 See that the spin projections are similar to last time, except that the Larmor precession is now at 40KHz.
 
-References
-----------
+.. References
+.. ----------
 
-.. bibliography:: ../../bib/spinsim.bib
+.. .. bibliography:: ../../bib/spinsim.bib

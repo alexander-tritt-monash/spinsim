@@ -1,5 +1,7 @@
-spinsim package
-===============
+.. _package:
+
+Package reference
+=================
 
 Subpackages
 -----------
