@@ -5,6 +5,7 @@
 from . import utilities
 
 from enum import Enum
+import numpy as np
 import numba as nb
 from numba import cuda
 import math
@@ -100,7 +101,7 @@ class ExponentiationMethod(Enum):
     # """
 
 class Simulator:
-    def __init__(self, get_source, spin_quantum_number, use_rotating_frame = True, integration_method = IntegrationMethod.MAGNUS_CF_4, exponentiation_method = ExponentiationMethod.LIE_TROTTER, trotter_cutoff = 28, max_registers = 63, threads_per_block = 64):
+    def __init__(self, get_source, spin_quantum_number, exponentiation_method = None, use_rotating_frame = True, integration_method = IntegrationMethod.MAGNUS_CF_4, trotter_cutoff = 28, max_registers = 63, threads_per_block = 64):
         """
         Parameters
         ----------
@@ -118,6 +119,7 @@ class Simulator:
         """
 
         self.threads_per_block = threads_per_block
+        self.spin_quantum_number = spin_quantum_number
 
         self.get_time_evolution_raw = None
         try:
@@ -134,7 +136,7 @@ class Simulator:
             print("\033[31mspinsim error: numba.cuda could not jit get_source function into a cuda device function.\033[0m\n")
             raise
 
-    def compile_time_evolver(self, get_source, spin_quantum_number, use_rotating_frame = True, integration_method = IntegrationMethod.MAGNUS_CF_4, exponentiation_method = ExponentiationMethod.LIE_TROTTER, trotter_cutoff = 28, max_registers = 63):
+    def compile_time_evolver(self, get_source, spin_quantum_number, use_rotating_frame = True, integration_method = IntegrationMethod.MAGNUS_CF_4, exponentiation_method = None, trotter_cutoff = 28, max_registers = 63):
         """
         Parameters
         ----------
@@ -153,6 +155,12 @@ class Simulator:
         dimension = spin_quantum_number.dimension
         lie_dimension = dimension + 1
         utility_set = spin_quantum_number.utility_set
+
+        if not exponentiation_method:
+            if spin_quantum_number == SpinQuantumNumber.ONE:
+                exponentiation_method = ExponentiationMethod.LIE_TROTTER
+            elif spin_quantum_number == SpinQuantumNumber.HALF:
+                exponentiation_method = ExponentiationMethod.ANALYTIC
 
         if integration_method == IntegrationMethod.MAGNUS_CF_4:
             sample_index_max = 3
@@ -382,25 +390,49 @@ class Simulator:
 
         self.get_time_evolution_raw = get_time_evolution
 
-    def get_state(self, state_init, state, time_evolution):
-        """
-        Use the stepwise time evolution operators in succession to find the quantum state timeseries of the 3 level atom.
+    def get_state(self, source_modifier, time_start, time_end, time_step_fine, time_step_coarse, state_init):
+        time_end_points = np.asarray([time_start, time_end], np.float64)
 
-        Parameters
-        ----------
-        state_init : :class:`numpy.ndarray` of :class:`numpy.cdouble`
-            The state (spin wavefunction) of the system at the start of the simulation.
-        state : :class:`numpy.ndarray` of :class:`numpy.cdouble` (time_index, state_index)
-            The state (wavefunction) of the spin system in the lab frame, for each time sampled. See :math:`\\psi(t)` in :ref:`overview_of_simulation_method`. This is an output.
-        time_evolution : :class:`numpy.ndarray` of :class:`numpy.cdouble` (time_index, bra_state_index, ket_state_index)
-            Time evolution operator (matrix) between the current and next timesteps, for each time sampled. See :math:`U(t)` in :ref:`overview_of_simulation_method`.
-        """
+        time_index_max = int((time_end_points[1] - time_end_points[0])/time_step_coarse)
+        time = cuda.device_array(time_index_max, np.float64)
+        self.time_evolution_coarse = cuda.device_array((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
 
-        get_state(state_init, state, time_evolution)
+        blocks_per_grid = (time.size + (self.threads_per_block - 1)) // self.threads_per_block
+        try:
+            self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](source_modifier, time, time_end_points, time_step_fine, time_step_coarse, self.time_evolution_coarse)
+        except:
+            print("\033[31mspinsim error: numba.cuda could not jit get_source function into a cuda device function.\033[0m\n")
+            raise
 
-    def get_spin(self, state, spin):
+        self.time_evolution_coarse = self.time_evolution_coarse.copy_to_host()
+        time = time.copy_to_host()
+        state = np.empty((time_index_max, self.spin_quantum_number.dimension), np.complex128)
+        get_state(state_init, state, self.time_evolution_coarse)
+
+        return state, time
+
+    # def get_state(self, state_init, state, time_evolution):
+    #     """
+    #     Use the stepwise time evolution operators in succession to find the quantum state timeseries of the 3 level atom.
+
+    #     Parameters
+    #     ----------
+    #     state_init : :class:`numpy.ndarray` of :class:`numpy.cdouble`
+    #         The state (spin wavefunction) of the system at the start of the simulation.
+    #     state : :class:`numpy.ndarray` of :class:`numpy.cdouble` (time_index, state_index)
+    #         The state (wavefunction) of the spin system in the lab frame, for each time sampled. See :math:`\\psi(t)` in :ref:`overview_of_simulation_method`. This is an output.
+    #     time_evolution : :class:`numpy.ndarray` of :class:`numpy.cdouble` (time_index, bra_state_index, ket_state_index)
+    #         Time evolution operator (matrix) between the current and next timesteps, for each time sampled. See :math:`U(t)` in :ref:`overview_of_simulation_method`.
+    #     """
+
+    #     get_state(state_init, state, time_evolution)
+
+    def get_spin(self, state):
+        spin = cuda.device_array((state.shape[0], 3), np.float64)
         blocks_per_grid = (state.shape[0] + (self.threads_per_block - 1)) // self.threads_per_block
-        get_spin[blocks_per_grid, self.threads_per_block](state, spin)
+        get_spin[blocks_per_grid, self.threads_per_block](cuda.to_device(state), spin)
+        spin = spin.copy_to_host()
+        return spin
 
 
 @nb.jit(nopython = True)

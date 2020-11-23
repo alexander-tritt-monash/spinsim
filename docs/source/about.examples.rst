@@ -22,21 +22,10 @@ Full code
 
    simulator_larmor = spinsim.Simulator(get_source_larmor, spinsim.SpinQuantumNumber.HALF)
 
-   time_step_coarse = 500e-9
-   time_step_fine = 100e-9
-   time_end_points = np.asarray([0e-3, 100e-3], np.double)
-
-   time_index_max = int((time_end_points[1] - time_end_points[0])/time_step_coarse)
-   time = np.empty(time_index_max, np.double)
-
    state_init = np.asarray([1/np.sqrt(2), 1/np.sqrt(2)], np.cdouble)
-   state = np.empty((time_index_max, 2), np.cdouble)
-   spin = np.empty((time_index_max, 3), np.double)
-   time_evolution = np.empty((time_index_max, 2, 2), np.cdouble)
 
-   simulator_larmor.get_time_evolution(0, time, time_end_points, time_step_fine, time_step_coarse, time_evolution)
-   simulator_larmor.get_state(state_init, state, time_evolution)
-   simulator_larmor.get_spin(state, spin)
+   state, time = simulator_larmor.get_state(0, 0e-3, 100e-3, 100e-9, 500e-9, state_init)
+   spin = simulator_larmor.get_spin(state)
 
    plt.figure()
    plt.plot(time, spin)
@@ -132,66 +121,22 @@ We can then construct an object of :class:`spinsim.Simulator` to return an integ
 
 The constructor of :class:`spinsim.Simulator` contains many options that can be used to customise which features are used by the integrator.
 
-The next step is to define some simulation parameters, as well as the input and output. Firstly, we must decide on some time steps that are to be used. `time_step_coarse` defines the resolution of the output time series for the time evolution operator, state and spin. `time_step_fine` determines the internal time step of the integrator. `time_step_coarse` must be an integer multiple of `time_step_fine`. We also need to define the times when the experiment starts and ends. Below we have chosen to have a `time_step_fine` of 10ns, a `time_step_coarse` of 100ns, a start time of 0ms, and an end time of 100ms.
+The next step is to define some simulation parameters, as well as the input and output. Firstly, we must decide on some time steps that are to be used. `time_step_coarse` defines the resolution of the output time series for the time evolution operator, state and spin. `time_step_fine` determines the internal time step of the integrator. `time_step_coarse` must be an integer multiple of `time_step_fine`. We also need to define the times when the experiment starts and ends. Below we have chosen to have a `time_step_fine` of 10ns, a `time_step_coarse` of 100ns, a start time of 0ms, and an end time of 100ms. We also need to define an initial state for the spin system. We choose an eigenstate of the :math:`F_x` operator, as we expect that to precess as it evolves through time. Now that everything is set up, the time evolution operator can be found between each sample using our object `simulator_larmor`.
 
 .. code-block:: python
 
-   # The resultion of the output of the simulation is 500ns
-   time_step_coarse = 500e-9
-   # The resultion of the integration in the simulation is 100ns
-   time_step_fine = 100e-9
-   # Run between times of 0ms and 100ms.
-   time_end_points = np.asarray([0e-3, 100e-3], np.double)
-
-We also need to define an array of times for when each of the time series are sampled.
-
-.. code-block:: python
-
-   # The number of samples in the output
-   time_index_max = int((time_end_points[1] - time_end_points[0])/time_step_coarse)
-   # Define an empty array to write the time to
-   time = np.empty(time_index_max, np.double)
-
-Next we define empty arrays for the state of the system (wavefunction), as well as its expected spin (Bloch vector), and the time evolution operator between each sample. Here the time index is the furthest to the left. We also define an initial state. We choose an eigenstate of the :math:`F_x` operator, as we expect that to precess as it evolves through time.
-
-.. code-block:: python
-
-   # Define the initial state of the system (eigenstate of spin x)
+   # Evaluate the state over time, using our settings
    state_init = np.asarray([1/np.sqrt(2), 1/np.sqrt(2)], np.cdouble)
-   # Define an empty array to write the state to
-   state = np.empty((time_index_max, 2), np.cdouble)
-   # Define an empty array to write the spin to
-   spin = np.empty((time_index_max, 3), np.double)
-   # Define an empty array to write the time evolution operator to
-   time_evolution = np.empty((time_index_max, 2, 2), np.cdouble)
 
-Now that everything is set up, the time evolution operator can be found between each sample using our object `simulator_larmor`.
+   state, time = simulator_larmor.get_state(0, 0e-3, 100e-3, 100e-9, 500e-9, state_init)
+   spin = simulator_larmor.get_spin(state)
 
-.. code-block:: python
-
-   # Find the time evolution operator using our settings
-   simulator_larmor.get_time_evolution(\
-      0,
-      time,\
-      time_end_points,\
-      time_step_fine,\
-      time_step_coarse,\
-      time_evolution\
-   )
-
-Now that we have the time evolution operator, we can use it to find the state at each point in time. This is done with a regular :func:`numba.jit()`\ed function.
-
-.. code-block:: python
-
-   # Chain the time evolution operators together to find the state at each point in time
-   simulator_larmor.get_state(state_init, state, time_evolution)
-
-And finally, we can calculate the expected spin of the system, in parallel, on the gpu.
+Finally, we can calculate the expected spin of the system, in parallel, on the gpu.
 
 .. code-block:: python
 
    # Calculate the spin at each point in time
-   simulator_larmor.get_spin(state, spin)
+   spin = simulator_larmor.get_spin(state)
 
 Has this worked? We can plot the results using :mod:`matplotlib.pyplot` (zoomed in to show details),
 
@@ -225,7 +170,6 @@ Full code
    import numpy as np
    import matplotlib.pyplot as plt
    import math
-   from numba import cuda
 
    def get_source_rabi(time_sample, source_modifier, source_sample):
       # Dress atoms from the x direction, Rabi flopping at 1kHz
@@ -236,27 +180,13 @@ Full code
 
    simulator_rabi = spinsim.Simulator(get_source_rabi, spinsim.SpinQuantumNumber.ONE)
 
-   time_step_coarse = 500e-9
-   time_step_fine = 100e-9
-   time_end_points = np.asarray([0e-3, 100e-3], np.double)
-   time_index_max = int((time_end_points[1] - time_end_points[0])/time_step_coarse)
-
    state_init = np.asarray([1, 0, 0], np.cdouble)
-   state = np.empty((time_index_max, 3), np.cdouble)
 
-   time_evolution = cuda.device_array((time_index_max, 3, 3), np.cdouble)
-   time = cuda.device_array(time_index_max, np.double)
-   spin = cuda.device_array((time_index_max, 3), np.double)
-
-   simulator_rabi.get_time_evolution(1, time, cuda.to_device(time_end_points), time_step_fine, time_step_coarse, time_evolution)
-   time = time.copy_to_host()
-   time_evolution = time_evolution.copy_to_host()
-   simulator_rabi.get_state(state_init, state, time_evolution)
-   simulator_rabi.get_spin(cuda.to_device(state), spin)
-   spin = spin.copy_to_host()
+   state0, time0 = simulator_rabi.get_state(1, 0e-3, 100e-3, 100e-9, 500e-9, state_init)
+   spin0 = simulator_rabi.get_spin(state0)
 
    plt.figure()
-   plt.plot(time, spin)
+   plt.plot(time0, spin0)
    plt.legend(["x", "y", "z"])
    plt.xlim(0e-3, 2e-3)
    plt.xlabel("time (s)")
@@ -264,19 +194,11 @@ Full code
    plt.title("Spin projection for Rabi flopping")
    plt.show()
 
-   time_evolution = cuda.device_array((time_index_max, 3, 3), np.cdouble)
-   time = cuda.device_array(time_index_max, np.double)
-   spin = cuda.device_array((time_index_max, 3), np.double)
-
-   simulator_rabi.get_time_evolution(2, time, cuda.to_device(time_end_points), time_step_fine, time_step_coarse, time_evolution)
-   time = time.copy_to_host()
-   time_evolution = time_evolution.copy_to_host()
-   simulator_rabi.get_state(state_init, state, time_evolution)
-   simulator_rabi.get_spin(cuda.to_device(state), spin)
-   spin = spin.copy_to_host()
+   state1, time1 = simulator_rabi.get_state(2, 0e-3, 100e-3, 100e-9, 500e-9, state_init)
+   spin1 = simulator_rabi.get_spin(state1)
 
    plt.figure()
-   plt.plot(time, spin)
+   plt.plot(time1, spin1)
    plt.legend(["x", "y", "z"])
    plt.xlim(0e-3, 2e-3)
    plt.xlabel("time (s)")
@@ -287,9 +209,9 @@ Full code
 Explanation
 ...........
 
-Now that we have confirmed that the most basic quantum system can be simulated using :mod:`spinsim`, we can explore the more advanced, and more optimised ways it can be used. For a start, :mod:`spinsim` was designed for use simulating spin one systems, so we should try that out. Also to note is that many of the ways of doing things with memory in the basic example were very sub-optimal, so we should look at ways to fix that.
+Now that we have confirmed that the most basic quantum system can be simulated using :mod:`spinsim`, we can explore a more complicated system with varying parameters.
 
-Again, we import some packages, with some new ones that will be explained later.
+Again, we import some packages, now including the :mod:`math` package.
 
 .. code-block:: python
 
@@ -299,7 +221,6 @@ Again, we import some packages, with some new ones that will be explained later.
    import matplotlib.pyplot as plt
 
    import math
-   from numba import cuda
 
 Let's first introduce the Rabi system. As before, we split the energy levels of the spin system (which is now three levels), with an energy difference :math:`f_L` between each consecutive level. Again, if started in an eigenstate of :math:`F_x`, the expected spin will precess anticlockwise around the positive z axis. Radiation can be applied to the system to drive transitions between the spin states. For this to work, radiation must be resonant (or close to resonant) with the energy splitting (ie, its frequency of oscillation must be close to :math:`f_L`). If the system starts with the expected spin pointing completely up, this radiation will drive the system to point completely down. It will then drive the system back up, and the cycle repeats. This happens at a rate of half of the amplitude of the radiation (assuming perfect resonance), which is called the Rabi frequency :math:`f_R`, and the cycling is called Rabi flopping. The Schroedinger equation of the Rabi system is
 
@@ -382,82 +303,17 @@ Let's build our simulator object, now spin one.
 .. code-block:: python
 
    # Return a solver which uses this function
-   simulator_rabi = spinsim.Simulator(\
-      get_source_rabi,\
-      spinsim.SpinQuantumNumber.ONE\
-   )
+   simulator_rabi = spinsim.Simulator(get_source_rabi, spinsim.SpinQuantumNumber.ONE)
 
-We set up some of the parameters as before, but can make some optimisations for the others.
-
-.. code-block:: python
-
-   # The resolution of the output of the simulation is 500ns
-   time_step_coarse = 500e-9
-   # The resolution of the integration in the simulation is 100ns
-   time_step_fine = 100e-9
-   # Run between times of 0ms and 100ms.
-   time_end_points = np.asarray([0e-3, 100e-3], np.double)
-
-   # The number of samples in the output
-   time_index_max = int((time_end_points[1] - time_end_points[0])/time_step_coarse)
-
-   # Define the initial state of the system (eigenstate of spin z)
-   state_init = np.asarray([1, 0, 0], np.cdouble)
-   # Define an empty array to write the state to
-   state = np.empty((time_index_max, 3), np.cdouble)
-
-   # Set up the gpu to have threads of size 64
-   threads_per_block = 64
-   blocks_per_grid = (time_index_max + (threads_per_block - 1)) // threads_per_block
-
-Another unnecessary thing we were doing before, is copying memory to and from the gpu. For example, we never use `time_evolution`, `time`, or `spin` before they are loaded onto the gpu for evaluation. This means that declaring them as empty in cpu memory, only to copy the empty (junk) array to gpu memory for execution is a waste of time. A way to get around this is to use :func:`numba.cuda.device_array()` to declare the array directly in gpu memory.
-
-.. code-block:: python
-
-   # Define an empty array directly on the gpu to write the time evolution operator to
-   time_evolution = cuda.device_array((time_index_max, 3, 3), np.cdouble)
-   # Define an empty array directly on the gpu to write the time to
-   time = cuda.device_array(time_index_max, np.double)
-   # Define an empty array directly on the gpu to write the spin to
-   spin = cuda.device_array((time_index_max, 3), np.double)
-
-.. warning::
-   As we will soon see, declaring arrays in gpu memory will mean they are no longer automatically copied to cpu memory at the end of the simulation. Thus, :func:`numba.cuda.cudadrv.devicearray.DeviceNDArray.copy_to_host()` (a class method) must be used on the these arrays in order to manipulate them in cpu memory.
-
-We are now ready to execute. There are a few things to note. Firstly, `source_modifier` is the first parameter. Here it is set to 1 for a Larmor frequency :math:`f_L` of 20kHz. Also, using :func:`numba.cuda.to_device()` on arrays will mean that they are not returned, saving time when copying values from gpu memory to cpu memory.
+We set up some of the parameters as before, and we are now ready to execute. Note that, `source_modifier` is the first parameter. Here it is set to 1 for a Larmor frequency :math:`f_L` of 20kHz.
 
 .. code-block:: python
 
    # Find the time evolution operator using our settings
-   simulator_rabi.get_time_evolution(\
-      1,\
-      time,\
-      cuda.to_device(time_end_points),\
-      time_step_fine,\
-      time_step_coarse,\
-      time_evolution\
-   )
+   state_init = np.asarray([1, 0, 0], np.cdouble)
 
-As mentioned earlier, we must manually retrieve `time` and `time_evolution`.
-
-.. code-block:: python
-
-   # Get arrays off the gpu
-   time = time.copy_to_host()
-   time_evolution = time_evolution.copy_to_host()
-
-The same steps as  before can be made to obtain the final spin. Similar memory optimisations to before have been made here as well.
-
-.. code-block:: python
-
-   # Chain the time evolution operators together to find the state at each point in time
-   simulator_rabi.get_state(state_init, state, time_evolution)
-
-   # Calculate the spin at each point in time
-   simulator_rabi.get_spin(cuda.to_device(state), spin)
-
-   # Get spin off the gpu
-   spin = spin.copy_to_host()
+   state0, time0 = simulator_rabi.get_state(1, 0e-3, 100e-3, 100e-9, 500e-9, state_init)
+   spin0 = simulator_rabi.get_spin(state0)
 
 Finally we can plot our results.
 
@@ -465,7 +321,7 @@ Finally we can plot our results.
 
    # Plot result
    plt.figure()
-   plt.plot(time, spin)
+   plt.plot(time0, spin0)
    plt.legend(["x", "y", "z"])
    plt.xlim(0e-3, 2e-3)
    plt.xlabel("time (s)")
@@ -483,39 +339,13 @@ Finally, let's run another experiment using the same compiled function. This wil
 
 .. code-block:: python
 
-   # Define an empty array directly on the gpu to write the time evolution operator to
-   time_evolution = cuda.device_array((time_index_max, 3, 3), np.cdouble)
-   # Define an empty array directly on the gpu to write the time to
-   time = cuda.device_array(time_index_max, np.double)
-   # Define an empty array directly on the gpu to write the spin to
-   spin = cuda.device_array((time_index_max, 3), np.double)
-
    # Find the time evolution operator using our settings
-   simulator_rabi.get_time_evolution(
-      2,\
-      time,\
-      cuda.to_device(time_end_points),\
-      time_step_fine,\
-      time_step_coarse,\
-      time_evolution\
-   )
-
-   # Get arrays off the gpu
-   time = time.copy_to_host()
-   time_evolution = time_evolution.copy_to_host()
-
-   # Chain the time evolution operators together to find the state at each point in time
-   simulator_rabi.get_state(state_init, state, time_evolution)
-
-   # Calculate the spin at each point in time
-   simulator_rabi.get_spin[blocks_per_grid, threads_per_block](cuda.to_device(state), spin)
-
-   # Get spin off the gpu
-   spin = spin.copy_to_host()
+   state1, time1 = simulator_rabi.get_state(2, 0e-3, 100e-3, 100e-9, 500e-9, state_init)
+   spin1 = simulator_rabi.get_spin(state1)
 
    # Plot result
    plt.figure()
-   plt.plot(time, spin)
+   plt.plot(time1, spin1)
    plt.legend(["x", "y", "z"])
    plt.xlim(0e-3, 2e-3)
    plt.xlabel("time (s)")
