@@ -23,21 +23,10 @@ Bellow is a basic example of evaluating the state and bloch vector for simulatin
 
    simulator_larmor = spinsim.Simulator(get_source_larmor, spinsim.SpinQuantumNumber.HALF)
 
-   time_step_coarse = 500e-9
-   time_step_fine = 100e-9
-   time_end_points = np.asarray([0e-3, 100e-3], np.double)
-
-   time_index_max = int((time_end_points[1] - time_end_points[0])/time_step_coarse)
-   time = np.empty(time_index_max, np.double)
-
    state_init = np.asarray([1/np.sqrt(2), 1/np.sqrt(2)], np.cdouble)
-   state = np.empty((time_index_max, 2), np.cdouble)
-   spin = np.empty((time_index_max, 3), np.double)
-   time_evolution = np.empty((time_index_max, 2, 2), np.cdouble)
 
-   simulator_larmor.get_time_evolution(0, time, time_end_points, time_step_fine, time_step_coarse, time_evolution)
-   simulator_larmor.get_state(state_init, state, time_evolution)
-   simulator_larmor.get_spin(state, spin)
+   state, time = simulator_larmor.get_state(0, 0e-3, 100e-3, 100e-9, 500e-9, state_init)
+   spin = simulator_larmor.get_spin(state)
 
    plt.figure()
    plt.plot(time, spin)
