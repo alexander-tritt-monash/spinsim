@@ -8,3 +8,4 @@ Usage and about
     about.examples
     about.motivation
     about.architecture
+    about.quality_control

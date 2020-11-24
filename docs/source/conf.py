@@ -57,6 +57,7 @@ extensions = [
 ]
 
 autoclass_content = 'both'
+numfig = True
 
 # Napoleon settings
 napoleon_google_docstring = False
