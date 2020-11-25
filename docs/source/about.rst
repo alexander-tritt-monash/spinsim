@@ -5,6 +5,7 @@ Usage and about
     :maxdepth: 4
     :caption: Contents:
 
+    about.use_potential
     about.examples
     about.motivation
     about.architecture
