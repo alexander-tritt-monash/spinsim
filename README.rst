@@ -13,7 +13,7 @@ spinsim: a GPU optimised solver of spin one and half quantum systems
     :target: https://spinsim.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
-:mod:`spinsim` is a python package that simulates spin half and spin one quantum mechanical systems following a time dependent Shroedinger equation. It makes use of the :class:`numba.cuda` llvm compiler\ :cite:`lam_numba_2015`, and other optimisations, to allow for fast and accurate evaluation on Nvidia Cuda\ :cite:`nickolls_scalable_2008` compatible systems using GPU parallelisation.
+*spinsim* is a python package that simulates spin half and spin one quantum mechanical systems following a time dependent Shroedinger equation. It makes use of the *numba.cuda* llvm compiler, and other optimisations, to allow for fast and accurate evaluation on Nvidia Cuda compatible systems using GPU parallelisation.
 
 Bellow is a basic example of evaluating the state and bloch vector for simulating Larmor precession:
 
@@ -43,8 +43,3 @@ Bellow is a basic example of evaluating the state and bloch vector for simulatin
    plt.ylabel("spin expectation (hbar)")
    plt.title("Spin projection for Larmor precession")
    plt.show()
-
-References
-==========
-
-.. bibliography:: bib/spinsim.bib
