@@ -8,5 +8,5 @@ spinsim: a GPU optimised solver of spin one and half quantum systems
 .. image:: https://readthedocs.org/projects/spinsim/badge/?version=latest
     :target: https://spinsim.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
-.. image:: https://img.shields.io/github/license/alexander-tritt-monash/spinsim
-    :alt: GitHub
+.. image:: https://img.shields.io/pypi/l/spinsim
+    :alt: PyPI - License
