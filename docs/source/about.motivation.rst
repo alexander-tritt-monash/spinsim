@@ -4,7 +4,7 @@ Motivation and features
 Motivation
 ----------
 
-Ultracold atoms have proven their effectiveness in state of the art technologies in quantum metrology\ :cite:`huang_quantum_2014`. The use of quantum mechanics to make precise measurements of small signals). Design of such measurement protocols requires many steps of verification, including simulation. This is especially important, since running real experiments can be expensive and time consuming, and thus it is more practical to debug such protocols quickly on a computer. In general, any design of experiments using spin systems could benefit from a fast, accurate method of simulation.
+Ultracold atoms have proven their effectiveness in state of the art technologies in quantum metrology\ :cite:`huang_quantum_2014`. The use of quantum mechanics to make precise measurements of small signals). Design of such measurement protocols requires many steps of verification, including simulation. This is especially important, since running real experiments can be expensive and time consuming, and thus it is more practical to debug such protocols quickly and cheaply on a computer. In general, any design of experiments using spin systems could benefit from a fast, accurate method of simulation.
 
 In the past, the Spinor Bose Einstein Condensate Lab at Monash University used an in-house, cython based script AtomicPy\ :cite:`morris_qcmonkatomicpy_2018` (which this package is originally based off), and standard differential equation solvers to solve the Schroedinger equation for these spin one (sometimes simplified to spin half for speed) systems. However, these methods are not completely optimised for our use case, and therefore come with some issues.
 
@@ -20,7 +20,7 @@ Techniques
 Time interval level parallelisation with Cuda
 .............................................
 
-:mod:`spinsim` uses :mod:`numba.cuda` to split up work on an individual simulation over many GPU cores. This is one of the features that greatly increases speed over AtomicPy. See :ref:`architecture` for full details.
+:mod:`spinsim` uses :mod:`numba.cuda` to split up work on an individual simulation over many GPU cores. This is one of the features that greatly increases speed over AtomicPy. See :ref:`architecture` for full details. This is a different approach to Auer et al\ :cite:`auer_magnus_2018`, who use parallelisation of linear algebra operations to optimise the simulation of much larger dimensional quantum systems systems. :mod:`spinsim` focuses on the optimisation of small, spin half and spin one systems.
 
 Magnus based commutator free integrator
 .......................................
@@ -50,21 +50,21 @@ The user is required to write their own python function used as the Hamiltonian 
 When set to spin half mode, the :mod:`spinsim` package solves time dependent Schroedinger equations of the form
 
 .. math::
-   \frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (f_x(t) F_x + f_y(t) F_y + f_z(t) F_z) \psi(t),
+   \frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (f_x(t) J_x + f_y(t) J_y + f_z(t) J_z) \psi(t),
 
 where :math:`i^2 = -1`, :math:`\psi(t) \in \mathbb{C}^2`, and the spin half spin projection operators are given by
 
 .. math::
    \begin{align*}
-      F_x &= \frac12\begin{pmatrix}
+      J_x &= \frac12\begin{pmatrix}
          0 & 1 \\
          1 & 0
       \end{pmatrix},
-      &F_y &= \frac12\begin{pmatrix}
+      &J_y &= \frac12\begin{pmatrix}
          0 & -i \\
          i &  0
       \end{pmatrix},
-      &F_z &= \frac12\begin{pmatrix}
+      &J_z &= \frac12\begin{pmatrix}
          1 &  0 \\
          0 & -1
       \end{pmatrix}.
@@ -73,34 +73,34 @@ where :math:`i^2 = -1`, :math:`\psi(t) \in \mathbb{C}^2`, and the spin half spin
 And, when in spin one mode, :mod:`spinsim` can solve Schroedinger equations of the form
 
 .. math::
-   \frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (f_x(t) F_x + f_y(t) F_y + f_z(t) F_z + f_q(t) F_q) \psi(t).
+   \frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (f_x(t) J_x + f_y(t) J_y + f_z(t) J_z + f_q(t) J_q) \psi(t).
 
 where now :math:`\psi(t) \in \mathbb{C}^3`, and the spin one operators are given by
 
 .. math::
    \begin{align*}
-      F_x &= \frac{1}{\sqrt{2}}\begin{pmatrix}
+      J_x &= \frac{1}{\sqrt{2}}\begin{pmatrix}
          0 & 1 & 0 \\
          1 & 0 & 1 \\
          0 & 1 & 0
       \end{pmatrix},&
-      F_y &= \frac{1}{\sqrt{2}}\begin{pmatrix}
+      J_y &= \frac{1}{\sqrt{2}}\begin{pmatrix}
          0 & -i &  0 \\
          i &  0 & -i \\
          0 &  i &  0
       \end{pmatrix},\\
-      F_z &= \begin{pmatrix}
+      J_z &= \begin{pmatrix}
          1 & 0 &  0 \\
          0 & 0 &  0 \\
          0 & 0 & -1
       \end{pmatrix},&
-      F_q &= \frac{1}{3}\begin{pmatrix}
+      J_q &= \frac{1}{3}\begin{pmatrix}
          1 &  0 & 0 \\
          0 & -2 & 0 \\
          0 &  0 & 1
       \end{pmatrix}.
    \end{align*}
 
-:math:`F_x, F_y, F_z` are regular spin operators, and :math:`F_q` is a quadratic operator, proportional to :math:`Q_{zz}` as defined by :cite:`hamley_spin-nematic_2012`, and :math:`Q_0` as defined by :cite:`di_dipolequadrupole_2010`.
+:math:`J_x, J_y, J_z` are regular spin operators, and :math:`J_q` is a quadratic operator, proportional to :math:`Q_{zz}` as defined by :cite:`hamley_spin-nematic_2012`, and :math:`Q_0` as defined by :cite:`di_dipolequadrupole_2010`. The quadratic operator is required when solving Schroedinger equations in atomic physics involving single photon radio transitions, where the quadratic coupling :math:`f_q(t)` is proportional to the square of the magnetic field strength :math:`|B(t)|^2`.
 
 The user provides a :func:`numba.cuda.jit()`\ able function that samples the Hamiltonian at a certain input time `time_sample`, which writes to the array `source_sample`, which has three (four) entries for spin half (one) representing the numerical values of :math:`f_x(t),f_y(t),f_z(t)` (:math:`f_q(t)`). There is also a second input `simulation_modifier` which allows for multiple versions of a simulation to be swept over using a single compiled function, for optimal speed. See :ref:`examples` for a tutorial of using this in practice, and :class:`spinsim.Simulator` for a full reference.

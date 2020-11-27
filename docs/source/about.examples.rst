@@ -61,21 +61,21 @@ The first thing we need to do is import the correct packages for the example. As
 When set to spin half mode, the :mod:`spinsim` package solves time dependent Schroedinger Equations of the form
 
 .. math::
-   \frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (f_x(t) F_x + f_y(t) F_y + f_z(t) F_z) \psi(t),
+   \frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (f_x(t) J_x + f_y(t) J_y + f_z(t) J_z) \psi(t),
 
 where :math:`i^2 = -1`, :math:`\psi(t) \in \mathbb{C}^2`, and the spin half spin projection operators are given by
 
 .. math::
    \begin{align*}
-      F_x &= \frac12\begin{pmatrix}
+      J_x &= \frac12\begin{pmatrix}
          0 & 1 \\
          1 & 0
       \end{pmatrix},
-      &F_y &= \frac12\begin{pmatrix}
+      &J_y &= \frac12\begin{pmatrix}
          0 & -i \\
          i &  0
       \end{pmatrix},
-      &F_z &= \frac12\begin{pmatrix}
+      &J_z &= \frac12\begin{pmatrix}
          1 &  0 \\
          0 & -1
       \end{pmatrix}.
@@ -86,7 +86,7 @@ The source of the system is the collection of energy functions :math:`f_x(t), f_
 To continue with our example, the Larmor system follows a Schroedinger equation of
 
 .. math::
-   \frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi f_L F_z \psi(t),
+   \frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi f_L J_z \psi(t),
 
 so
 
@@ -121,7 +121,7 @@ We can then construct an object of :class:`spinsim.Simulator` to return an integ
 
 The constructor of :class:`spinsim.Simulator` contains many options that can be used to customise which features are used by the integrator.
 
-The next step is to define some simulation parameters, as well as the input and output. Firstly, we must decide on some time steps that are to be used. `time_step_coarse` defines the resolution of the output time series for the time evolution operator, state and spin. `time_step_fine` determines the internal time step of the integrator. `time_step_coarse` must be an integer multiple of `time_step_fine`. We also need to define the times when the experiment starts and ends. Below we have chosen to have a `time_step_fine` of 10ns, a `time_step_coarse` of 100ns, a start time of 0ms, and an end time of 100ms. We also need to define an initial state for the spin system. We choose an eigenstate of the :math:`F_x` operator, as we expect that to precess as it evolves through time. Now that everything is set up, the time evolution operator can be found between each sample using our object `simulator_larmor`.
+The next step is to define some simulation parameters, as well as the input and output. Firstly, we must decide on some time steps that are to be used. `time_step_coarse` defines the resolution of the output time series for the time evolution operator, state and spin. `time_step_fine` determines the internal time step of the integrator. `time_step_coarse` must be an integer multiple of `time_step_fine`. We also need to define the times when the experiment starts and ends. Below we have chosen to have a `time_step_fine` of 10ns, a `time_step_coarse` of 100ns, a start time of 0ms, and an end time of 100ms. We also need to define an initial state for the spin system. We choose an eigenstate of the :math:`J_x` operator, as we expect that to precess as it evolves through time. Now that everything is set up, the time evolution operator can be found between each sample using our object `simulator_larmor`.
 
 .. code-block:: python
 
@@ -222,43 +222,43 @@ Again, we import some packages, now including the :mod:`math` package.
 
    import math
 
-Let's first introduce the Rabi system. As before, we split the energy levels of the spin system (which is now three levels), with an energy difference :math:`f_L` between each consecutive level. Again, if started in an eigenstate of :math:`F_x`, the expected spin will precess anticlockwise around the positive z axis. Radiation can be applied to the system to drive transitions between the spin states. For this to work, radiation must be resonant (or close to resonant) with the energy splitting (ie, its frequency of oscillation must be close to :math:`f_L`). If the system starts with the expected spin pointing completely up, this radiation will drive the system to point completely down. It will then drive the system back up, and the cycle repeats. This happens at a rate of half of the amplitude of the radiation (assuming perfect resonance), which is called the Rabi frequency :math:`f_R`, and the cycling is called Rabi flopping. The Schroedinger equation of the Rabi system is
+Let's first introduce the Rabi system. As before, we split the energy levels of the spin system (which is now three levels), with an energy difference :math:`f_L` between each consecutive level. Again, if started in an eigenstate of :math:`J_x`, the expected spin will precess anticlockwise around the positive z axis. Radiation can be applied to the system to drive transitions between the spin states. For this to work, radiation must be resonant (or close to resonant) with the energy splitting (ie, its frequency of oscillation must be close to :math:`f_L`). If the system starts with the expected spin pointing completely up, this radiation will drive the system to point completely down. It will then drive the system back up, and the cycle repeats. This happens at a rate of half of the amplitude of the radiation (assuming perfect resonance), which is called the Rabi frequency :math:`f_R`, and the cycling is called Rabi flopping. The Schroedinger equation of the Rabi system is
 
 .. math::
-   \frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (2 f_R \cos(2\pi f_L t) F_x + f_L F_z) \psi(t).
+   \frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (2 f_R \cos(2\pi f_L t) J_x + f_L J_z) \psi(t).
 
 In general, :mod:`spinsim` can solve Schroedinger equations of the form
 
 .. math::
-   \frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (f_x(t) F_x + f_y(t) F_y + f_z(t) F_z + f_q(t) F_q) \psi(t).
+   \frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (f_x(t) J_x + f_y(t) J_y + f_z(t) J_z + f_q(t) J_q) \psi(t).
 
 where now :math:`\psi(t) \in \mathbb{C}^3`, and the spin one operators are given by
 
 .. math::
    \begin{align*}
-      F_x &= \frac{1}{\sqrt{2}}\begin{pmatrix}
+      J_x &= \frac{1}{\sqrt{2}}\begin{pmatrix}
          0 & 1 & 0 \\
          1 & 0 & 1 \\
          0 & 1 & 0
       \end{pmatrix},&
-      F_y &= \frac{1}{\sqrt{2}}\begin{pmatrix}
+      J_y &= \frac{1}{\sqrt{2}}\begin{pmatrix}
          0 & -i &  0 \\
          i &  0 & -i \\
          0 &  i &  0
       \end{pmatrix},\\
-      F_z &= \begin{pmatrix}
+      J_z &= \begin{pmatrix}
          1 & 0 &  0 \\
          0 & 0 &  0 \\
          0 & 0 & -1
       \end{pmatrix},&
-      F_q &= \frac{1}{3}\begin{pmatrix}
+      J_q &= \frac{1}{3}\begin{pmatrix}
          1 &  0 & 0 \\
          0 & -2 & 0 \\
          0 &  0 & 1
       \end{pmatrix}.
    \end{align*}
 
-:math:`F_x, F_y, F_z` are regular spin operators, and :math:`F_q` is a quadratic operator, proportional to :math:`Q_{zz}` as defined by :cite:`hamley_spin-nematic_2012`, and :math:`Q_0` as defined by :cite:`di_dipolequadrupole_2010`.
+:math:`J_x, J_y, J_z` are regular spin operators, and :math:`J_q` is a quadratic operator, proportional to :math:`Q_{zz}` as defined by :cite:`hamley_spin-nematic_2012`, and :math:`Q_0` as defined by :cite:`di_dipolequadrupole_2010`.
 
 Just as before, we must define a source function, this time being time dependent.
 
