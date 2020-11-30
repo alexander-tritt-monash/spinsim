@@ -39,7 +39,7 @@ copyright = '2020, Monash University'
 author = 'Alexander Tritt'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1.3'
+release = '0.1.5'
 
 
 # -- General configuration ---------------------------------------------------

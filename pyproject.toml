@@ -1,15 +1,19 @@
 [tool.poetry]
 name = "spinsim"
-version = "0.1.3"
+version = "0.1.5"
 description = "A package for simulating spin half and spin one quantum systems quickly and accurately using cuda parallelisation."
 license = "BSD-3-Clause"
 authors = ["Alexander Tritt <alexander.tritt@monash.edu>"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
-# numba = "==0.50.1"
-# numpy = "==1.18.5"
-
+numba = "^0.50.1"
+numpy = "==1.19.3"
+matplotlib = "~3.2"
+# [
+#     {version = "^1.19.4", python = "^3.8"},
+#     {version = "==1.19.3", python = "^3.9"}
+# ]
 
 [tool.poetry.dev-dependencies]
 
