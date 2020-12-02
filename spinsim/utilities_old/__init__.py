@@ -11,7 +11,7 @@ from . import scalar
 from . import spin_half
 from . import spin_one
 
-@cuda.jit(device = True, inline = True)
+#@cuda.jit(device = True, inline = True)
 def interpolate_source_linear(source, time_sample, time_step_source, source_sample):
     """
     Samples the source using linear interpolation.
@@ -38,7 +38,7 @@ def interpolate_source_linear(source, time_sample, time_step_source, source_samp
     for spacial_index in range(source.shape[1]):
         source_sample[spacial_index] = (time_sample*(source[time_index_source_next, spacial_index] - source[time_index_source, spacial_index]) + source[time_index_source, spacial_index])
 
-@cuda.jit(device = True, inline = True)
+#@cuda.jit(device = True, inline = True)
 def interpolate_source_cubic(source, time_sample, time_step_source, source_sample):
     """
     Samples the source using cubic interpolation.

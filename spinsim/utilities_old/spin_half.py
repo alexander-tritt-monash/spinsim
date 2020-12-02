@@ -15,7 +15,7 @@ sqrt3 = math.sqrt(3)
 machine_epsilon = np.finfo(np.float64).eps*1000  # When to decide that vectors are parallel
 # trotter_cutoff = 52
 
-@cuda.jit(device = True, inline = True)
+#@cuda.jit(device = True, inline = True)
 def matrix_exponential_analytic(source_sample, result):
     """
     Calculates a :math:`su(2)` matrix exponential based on its analytic form.
@@ -90,7 +90,7 @@ def matrix_exponential_analytic(source_sample, result):
         result[0, 1] = 0
         result[1, 1] = 1
 
-@cuda.jit(device = True, inline = True)
+#@cuda.jit(device = True, inline = True)
 def matrix_exponential_lie_trotter(source_sample, result, trotter_cutoff):
     """
     Calculates a matrix exponential based on the Lie Product Formula,
@@ -200,7 +200,7 @@ def matrix_exponential_lie_trotter(source_sample, result, trotter_cutoff):
         matrix_multiply(result, result, temporary)
         matrix_multiply(temporary, temporary, result)
 
-@cuda.jit(device = True, inline = True)
+#@cuda.jit(device = True, inline = True)
 def matrix_exponential_trotter(exponent, result, trotter_cutoff):
     """
     Calculates a matrix exponential based on the Lie Product Formula,
@@ -314,7 +314,7 @@ def matrix_exponential_trotter(exponent, result, trotter_cutoff):
         matrix_multiply(result, result, exponent)
         matrix_multiply(exponent, exponent, result)
 
-@cuda.jit(device = True, inline = True)
+#@cuda.jit(device = True, inline = True)
 def matrix_exponential_taylor(exponent, result, cutoff):
     """
     Calculate a matrix exponential using a Taylor series. The matrix being exponentiated is complex, and of any dimension.
@@ -361,7 +361,7 @@ def matrix_exponential_taylor(exponent, result, cutoff):
             for y_index in nb.prange(2):
                 result[y_index, x_index] += T[y_index, x_index]
 
-@cuda.jit(device = True, inline = True)
+#@cuda.jit(device = True, inline = True)
 def norm2(z):
     """
     The 2 norm of a complex vector.
@@ -380,7 +380,7 @@ def norm2(z):
     """
     return math.sqrt(z[0].real**2 + z[0].imag**2 + z[1].real**2 + z[1].imag**2)
 
-@cuda.jit(device = True, inline = True)
+#@cuda.jit(device = True, inline = True)
 def inner(left, right):
     """
     The inner (maths convention dot) product between two complex vectors. 
@@ -408,7 +408,7 @@ def inner(left, right):
     """
     return scalar.conj(left[0])*right[0] + scalar.conj(left[1])*right[1]
 
-@cuda.jit(device = True, inline = True)
+#@cuda.jit(device = True, inline = True)
 def set_to(operator, result):
     """
     Copy the contents of one matrix into another.
@@ -427,7 +427,7 @@ def set_to(operator, result):
         for y_index in range(2):
             result[y_index, x_index] = operator[y_index, x_index]
 
-@cuda.jit(device = True, inline = True)
+#@cuda.jit(device = True, inline = True)
 def set_to_one(operator):
     """
     Make a matrix the multiplicative identity, ie, :math:`1`.
@@ -452,7 +452,7 @@ def set_to_one(operator):
     operator[0, 1] = 0
     operator[1, 1] = 1
 
-@cuda.jit(device = True, inline = True)
+#@cuda.jit(device = True, inline = True)
 def set_to_zero(operator):
     """
     Make a matrix the additive identity, ie, :math:`0`.
@@ -473,7 +473,7 @@ def set_to_zero(operator):
     operator[0, 1] = 0
     operator[1, 1] = 0
 
-@cuda.jit(device = True, inline = True)
+#@cuda.jit(device = True, inline = True)
 def matrix_multiply(left, right, result):
     """
     Multiply matrices left and right together, to be returned in result.
@@ -498,7 +498,7 @@ def matrix_multiply(left, right, result):
     result[0, 1] = left[0, 0]*right[0, 1] + left[0, 1]*right[1, 1]
     result[1, 1] = left[1, 0]*right[0, 1] + left[1, 1]*right[1, 1]
 
-@cuda.jit(device = True, inline = True)
+#@cuda.jit(device = True, inline = True)
 def adjoint(operator, result):
     """
     Takes the hermitian adjoint of a matrix.

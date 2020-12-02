@@ -1,3 +1,6 @@
+import colorama         # Colourful terminal
+colorama.init()
+
 import spinsim
 import numpy as np
 import matplotlib.pyplot as plt

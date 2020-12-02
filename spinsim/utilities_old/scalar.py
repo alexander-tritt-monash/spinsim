@@ -7,7 +7,7 @@ import numpy as np
 import numba as nb
 from numba import cuda
 
-@cuda.jit(device = True, inline = True)
+#@cuda.jit(device = True, inline = True)
 def conj(z):
     """
     Conjugate of a complex number.
@@ -30,7 +30,7 @@ def conj(z):
     """
     return (z.real - 1j*z.imag)
 
-@cuda.jit(device = True, inline = True)
+#@cuda.jit(device = True, inline = True)
 def complex_abs(z):
     """
     The absolute value of a complex number.
