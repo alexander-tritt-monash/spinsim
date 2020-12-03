@@ -8,6 +8,7 @@ from enum import Enum
 import numpy as np
 import numba as nb
 from numba import cuda
+from numba import roc
 import math
 
 sqrt2 = math.sqrt(2)
@@ -103,7 +104,41 @@ class Device(Enum):
         self._value_ = value
         self.index = index
 
-        if value == "cpu":
+        if value == "python":
+            def jit_host(template, max_registers):
+                def jit_host(func):
+                    return func
+                return jit_host
+            self.jit_host = jit_host
+
+            def jit_device(func):
+                return func
+            self.jit_device = jit_device
+
+            def jit_device_template(template):
+                def jit_device_template(func):
+                    return func
+                return jit_device_template
+            self.jit_device_template = jit_device_template
+
+        elif value == "cpu_single":
+            def jit_host(template, max_registers):
+                def jit_host(func):
+                    return nb.njit(template)(func)
+                return jit_host
+            self.jit_host = jit_host
+
+            def jit_device(func):
+                return nb.njit()(func)
+            self.jit_device = jit_device
+
+            def jit_device_template(template):
+                def jit_device_template(func):
+                    return nb.njit(template)(func)
+                return jit_device_template
+            self.jit_device_template = jit_device_template
+
+        elif value == "cpu":
             def jit_host(template, max_registers):
                 def jit_host(func):
                     return nb.njit(template, parallel = True)(func)
@@ -137,11 +172,31 @@ class Device(Enum):
                 return jit_device_template
             self.jit_device_template = jit_device_template
 
+        elif value == "roc":
+            def jit_host(template, max_registers):
+                def jit_host(func):
+                    return roc.jit(template)(func)
+                return jit_host
+            self.jit_host = jit_host
+
+            def jit_device(func):
+                return roc.jit(device = True)(func)
+            self.jit_device = jit_device
+
+            def jit_device_template(template):
+                def jit_device_template(func):
+                    return roc.jit(template, device = True)(func)
+                return jit_device_template
+            self.jit_device_template = jit_device_template
+
+    PYTHON = ("python", 0)
+    CPU_SINGLE = ("cpu_single", 0)
     CPU = ("cpu", 0)
     CUDA = ("cuda", 1)
+    ROC = ("roc", 2)
 
 class Simulator:
-    def __init__(self, get_source, spin_quantum_number, device = Device.CPU, exponentiation_method = None, use_rotating_frame = True, integration_method = IntegrationMethod.MAGNUS_CF_4, trotter_cutoff = 28, max_registers = 63, threads_per_block = 64):
+    def __init__(self, get_source, spin_quantum_number, device = Device.CUDA, exponentiation_method = None, use_rotating_frame = True, integration_method = IntegrationMethod.MAGNUS_CF_4, trotter_cutoff = 28, max_registers = 63, threads_per_block = 64):
         """
         Parameters
         ----------
@@ -164,20 +219,20 @@ class Simulator:
 
         self.get_time_evolution_raw = None
         try:
-            self.compile_time_evolver(get_source, spin_quantum_number, device, use_rotating_frame, integration_method, exponentiation_method, trotter_cutoff, max_registers)
+            self.compile_time_evolver(get_source, spin_quantum_number, device, use_rotating_frame, integration_method, exponentiation_method, trotter_cutoff, max_registers, threads_per_block)
         except:
-            print("\033[31mspinsim error: numba.cuda could not jit get_source function into a cuda device function.\033[0m\n")
+            print("\033[31mspinsim error: numba could not jit get_source function into a device function.\033[0m\n")
             raise
 
-    def get_time_evolution(self, source_modifier, time_coarse, time_end_points, time_step_fine, time_step_coarse, time_evolution_coarse):
-        blocks_per_grid = (time_coarse.size + (self.threads_per_block - 1)) // self.threads_per_block
-        try:
-            self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](source_modifier, time_coarse, time_end_points, time_step_fine, time_step_coarse, time_evolution_coarse)
-        except:
-            print("\033[31mspinsim error: numba.cuda could not jit get_source function into a cuda device function.\033[0m\n")
-            raise
+    # def get_time_evolution(self, source_modifier, time_coarse, time_end_points, time_step_fine, time_step_coarse, time_evolution_coarse):
+    #     blocks_per_grid = (time_coarse.size + (self.threads_per_block - 1)) // self.threads_per_block
+    #     try:
+    #         self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](source_modifier, time_coarse, time_end_points, time_step_fine, time_step_coarse, time_evolution_coarse)
+    #     except:
+    #         print("\033[31mspinsim error: numba.cuda could not jit get_source function into a cuda device function.\033[0m\n")
+    #         raise
 
-    def compile_time_evolver(self, get_source, spin_quantum_number, device, use_rotating_frame = True, integration_method = IntegrationMethod.MAGNUS_CF_4, exponentiation_method = None, trotter_cutoff = 28, max_registers = 63):
+    def compile_time_evolver(self, get_source, spin_quantum_number, device, use_rotating_frame = True, integration_method = IntegrationMethod.MAGNUS_CF_4, exponentiation_method = None, trotter_cutoff = 28, max_registers = 63, threads_per_block = 64):
         """
         Parameters
         ----------
@@ -193,7 +248,7 @@ class Simulator:
         trotter_cutoff : `int`
             The number of squares made by the matrix exponentiator, if :obj:`ExponentiationMethod.LIE_TROTTER` is chosen.
         """
-        utilities = Utilities(spin_quantum_number, device)
+        utilities = Utilities(spin_quantum_number, device, threads_per_block)
         conj = utilities.conj
         complex_abs = utilities.complex_abs
         norm2 = utilities.norm2
@@ -240,9 +295,12 @@ class Simulator:
         @jit_device_template("(float64[:], complex128[:, :], complex128[:, :])")
         def append_exponentiation(source_sample, time_evolution_fine, time_evolution_coarse):
             if device_index == 0:
-                time_evolution_old = np.empty((dimension, dimension), dtype = nb.complex128)
+                time_evolution_old = np.empty((dimension, dimension), dtype = np.complex128)
             elif device_index == 1:
-                time_evolution_old = cuda.local.array((dimension, dimension), dtype = nb.complex128)
+                time_evolution_old = cuda.local.array((dimension, dimension), dtype = np.complex128)
+            elif device_index == 2:
+                time_evolution_old_group = roc.shared.array((threads_per_block, dimension, dimension), dtype = np.complex128)
+                time_evolution_old = time_evolution_old_group[roc.get_local_id(1), :, :]
 
             # Calculate the exponential
             if exponentiation_method_index == 0:
@@ -380,14 +438,29 @@ class Simulator:
 
             get_source_integration = get_source_integration_midpoint
             append_exponentiation_integration = append_exponentiation_integration_midpoint
-        # @jit_host("(float64)", max_registers)
-        # cuda.jit(func, template, debug = False,  max_registers = max_registers)
-        # @cuda.jit("float64")
-        # def f(x):
-        #     x = x + 1
-        # f = cuda.jit(func_or_sig = f, argtypes = "void(float64)")#, "(float64)", debug = False,  max_registers = max_registers)
-        @jit_device_template("(int64, float64[:], float64, float64, float64[:], complex128[:, :, :], complex128[:, :], float64[:, :], float64, complex128[:])")
-        def get_time_evolution_loop(time_index, time_coarse, time_step_coarse, time_step_fine, time_end_points, time_evolution_coarse, time_evolution_fine, source_sample, source_modifier, rotating_wave_winding):
+
+        @jit_device_template("(int64, float64[:], float64, float64, float64[:], complex128[:, :, :], float64)")
+        def get_time_evolution_loop(time_index, time_coarse, time_step_coarse, time_step_fine, time_end_points, time_evolution_coarse, source_modifier):
+            # Declare variables
+            if device_index == 0:
+                time_evolution_fine = np.empty((dimension, dimension), dtype = np.complex128)
+
+                source_sample = np.empty((sample_index_max, lie_dimension), dtype = np.float64)
+                rotating_wave_winding = np.empty(sample_index_end, dtype = np.complex128)
+            elif device_index == 1:
+                time_evolution_fine = cuda.local.array((dimension, dimension), dtype = np.complex128)
+
+                source_sample = cuda.local.array((sample_index_max, lie_dimension), dtype = np.float64)
+                rotating_wave_winding = cuda.local.array(sample_index_end, dtype = np.complex128)
+            elif device_index == 2:
+                time_evolution_fine_group = roc.shared.array((threads_per_block, dimension, dimension), dtype = np.complex128)
+                time_evolution_fine = time_evolution_fine_group[roc.get_local_id(1), :, :]
+
+                source_sample_group = roc.shared.array((threads_per_block, sample_index_max, lie_dimension), dtype = np.float64)
+                source_sample = source_sample_group[roc.get_local_id(1), :, :]
+                rotating_wave_winding_group = roc.shared.array((threads_per_block, sample_index_end), dtype = np.complex128)
+                rotating_wave_winding = rotating_wave_winding_group[roc.get_local_id(1), :]
+            
             time_coarse[time_index] = time_end_points[0] + time_step_coarse*time_index
             time_fine = time_coarse[time_index]
 
@@ -445,26 +518,19 @@ class Simulator:
                 Time evolution operator (matrix) between the current and next timesteps, for each time sampled. See :math:`U(t)` in :ref:`overview_of_simulation_method`. This is an output, so use an empty :class:`numpy.ndarray` with :func:`numpy.empty()`, or declare a :class:`numba.cuda.cudadrv.devicearray.DeviceNDArray` using :func:`numba.cuda.device_array_like()`.
             """
 
-            # Declare variables
-            if device_index == 0:
-                time_evolution_fine = np.empty((dimension, dimension), dtype = nb.complex128)
-
-                source_sample = np.empty((sample_index_max, lie_dimension), dtype = nb.float64)
-                rotating_wave_winding = np.empty(sample_index_end, dtype = nb.complex128)
-            elif device_index == 1:
-                time_evolution_fine = cuda.local.array((dimension, dimension), dtype = nb.complex128)
-
-                source_sample = cuda.local.array((sample_index_max, lie_dimension), dtype = nb.float64)
-                rotating_wave_winding = cuda.local.array(sample_index_end, dtype = nb.complex128)
-
             if device_index == 0:
                 for time_index in nb.prange(time_coarse.size):
-                    get_time_evolution_loop(time_index, time_coarse, time_step_coarse, time_step_fine, time_end_points, time_evolution_coarse, time_evolution_fine, source_sample, source_modifier, rotating_wave_winding)
+                    get_time_evolution_loop(time_index, time_coarse, time_step_coarse, time_step_fine, time_end_points, time_evolution_coarse, source_modifier)
             elif device_index == 1:
                 # Run calculation for each coarse timestep in parallel
-                time_index = cuda.threadIdx.x + cuda.blockIdx.x*cuda.blockDim.x
+                time_index = cuda.grid(1)
                 if time_index < time_coarse.size:
-                    get_time_evolution_loop(time_index, time_coarse, time_step_coarse, time_step_fine, time_end_points, time_evolution_coarse, time_evolution_fine, source_sample, source_modifier, rotating_wave_winding)
+                    get_time_evolution_loop(time_index, time_coarse, time_step_coarse, time_step_fine, time_end_points, time_evolution_coarse, source_modifier)
+            elif device_index == 2:
+                # Run calculation for each coarse timestep in parallel
+                time_index = roc.get_global_id(1)
+                if time_index < time_coarse.size:
+                    get_time_evolution_loop(time_index, time_coarse, time_step_coarse, time_step_fine, time_end_points, time_evolution_coarse, source_modifier)
             return
         # get_time_evolution = cuda.jit("(float64, float64[:], float64[:], float64, float64, complex128[:, :, :])", debug = False,  max_registers = max_registers)(get_time_evolution)
         # get_time_evolution = jit_host("(float64, float64[:], float64[:], float64, float64, complex128[:, :, :])", max_registers)(get_time_evolution)
@@ -512,8 +578,11 @@ class Simulator:
                         spin[time_index, 0] = (2*conj(state[time_index, 1])*(state[time_index, 0] + state[time_index, 2])/sqrt2).real
                         spin[time_index, 1] = (2j*conj(state[time_index, 1])*(state[time_index, 0] - state[time_index, 2])/sqrt2).real
                         spin[time_index, 2] = state[time_index, 0].real**2 + state[time_index, 0].imag**2 - state[time_index, 2].real**2 - state[time_index, 2].imag**2
-            elif device_index == 1:
-                time_index = cuda.threadIdx.x + cuda.blockIdx.x*cuda.blockDim.x
+            elif device_index > 0:
+                if device_index == 1:
+                    time_index = cuda.grid(1)
+                elif device_index == 1:
+                    time_index = roc.get_global_id(1)
                 if time_index < spin.shape[0]:
                     if dimension == 2:
                         spin[time_index, 0] = (state[time_index, 0]*conj(state[time_index, 1])).real
@@ -525,8 +594,6 @@ class Simulator:
                         spin[time_index, 2] = state[time_index, 0].real**2 + state[time_index, 0].imag**2 - state[time_index, 2].real**2 - state[time_index, 2].imag**2
             return
 
-        # lambda func, template, max_registers: cuda.jit(func, template, debug = False,  max_registers = max_registers)
-        # self.get_time_evolution_raw = cuda.jit(get_time_evolution_raw, "(float64, float64[:], float64[:], float64, float64, complex128[:, :, :])", max_registers = max_registers)
         self.get_time_evolution_raw = get_time_evolution
         self.get_spin_raw = get_spin
 
@@ -534,7 +601,7 @@ class Simulator:
         time_end_points = np.asarray([time_start, time_end], np.float64)
 
         time_index_max = int((time_end_points[1] - time_end_points[0])/time_step_coarse)
-        if self.device == Device.CPU:
+        if self.device.index == 0:
             time = np.empty(time_index_max, np.float64)
             self.time_evolution_coarse = np.empty((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
 
@@ -552,6 +619,22 @@ class Simulator:
                 self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](source_modifier, time, time_end_points, time_step_fine, time_step_coarse, self.time_evolution_coarse)
             except:
                 print("\033[31mspinsim error: numba.cuda could not jit get_source function into a cuda device function.\033[0m\n")
+                raise
+
+            self.time_evolution_coarse = self.time_evolution_coarse.copy_to_host()
+            time = time.copy_to_host()
+            state = np.empty((time_index_max, self.spin_quantum_number.dimension), np.complex128)
+            get_state(state_init, state, self.time_evolution_coarse)
+        
+        elif self.device == Device.ROC:
+            time = roc.device_array(time_index_max, np.float64)
+            self.time_evolution_coarse = roc.device_array((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
+
+            blocks_per_grid = (time.size + (self.threads_per_block - 1)) // self.threads_per_block
+            try:
+                self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](source_modifier, time, time_end_points, time_step_fine, time_step_coarse, self.time_evolution_coarse)
+            except:
+                print("\033[31mspinsim error: numba.roc could not jit get_source function into a roc device function.\033[0m\n")
                 raise
 
             self.time_evolution_coarse = self.time_evolution_coarse.copy_to_host()
@@ -578,13 +661,18 @@ class Simulator:
     #     get_state(state_init, state, time_evolution)
 
     def get_spin(self, state):
-        if self.device == Device.CPU:
+        if self.device.index == 0:
             spin = np.empty((state.shape[0], 3), np.float64)
             self.get_spin_raw(state, spin)
         elif self.device == Device.CUDA:
             spin = cuda.device_array((state.shape[0], 3), np.float64)
             blocks_per_grid = (state.shape[0] + (self.threads_per_block - 1)) // self.threads_per_block
             self.get_spin_raw[blocks_per_grid, self.threads_per_block](cuda.to_device(state), spin)
+            spin = spin.copy_to_host()
+        elif self.device == Device.ROC:
+            spin = roc.device_array((state.shape[0], 3), np.float64)
+            blocks_per_grid = (state.shape[0] + (self.threads_per_block - 1)) // self.threads_per_block
+            self.get_spin_raw[blocks_per_grid, self.threads_per_block](roc.to_device(state), spin)
             spin = spin.copy_to_host()
         return spin
 
@@ -618,7 +706,7 @@ sqrt3 = math.sqrt(3)
 machine_epsilon = np.finfo(np.float64).eps*1000
 
 class Utilities:
-    def __init__(self, spin_quantum_number, device):
+    def __init__(self, spin_quantum_number, device, threads_per_block):
         jit_device = device.jit_device
         device_index = device.index
 
@@ -1013,9 +1101,12 @@ class Utilities:
                 result[1, 1] = (cx*cy + 1j*sx*sy)*cisz
 
                 if device_index == 0:
-                    temporary = np.empty((2, 2), dtype = nb.complex128)
+                    temporary = np.empty((2, 2), dtype = np.complex128)
                 elif device_index == 1:
-                    temporary = cuda.local.array((2, 2), dtype = nb.complex128)
+                    temporary = cuda.local.array((2, 2), dtype = np.complex128)
+                elif device_index == 2:
+                    temporary_group = roc.shared.array((threads_per_block, 2, 2), dtype = np.complex128)
+                    temporary = temporary_group[roc.get_local_id(1), :, :]
                 for power_index in range(hyper_cube_amount):
                     matrix_multiply(result, result, temporary)
                     matrix_multiply(temporary, temporary, result)
@@ -1046,26 +1137,31 @@ class Utilities:
                     The number of terms in the Taylor expansion (:math:`c` above).
                 """
                 if device_index == 0:
-                    T = np.empty((2, 2), dtype = nb.complex128)
-                    TOld = np.empty((2, 2), dtype = nb.complex128)
+                    T = np.empty((2, 2), dtype = np.complex128)
+                    T_old = np.empty((2, 2), dtype = np.complex128)
                 elif device_index == 1:
-                    T = cuda.local.array((2, 2), dtype = nb.complex128)
-                    TOld = cuda.local.array((2, 2), dtype = nb.complex128)
+                    T = cuda.local.array((2, 2), dtype = np.complex128)
+                    T_old = cuda.local.array((2, 2), dtype = np.complex128)
+                elif device_index == 2:
+                    T_group = roc.shared.array((threads_per_block, 2, 2), dtype = np.complex128)
+                    T = T_group[roc.get_local_id(1), :, :]
+                    T_old_group = roc.shared.array((threads_per_block, 2, 2), dtype = np.complex128)
+                    T_old = T_old_group[roc.get_local_id(1), :, :]
                 set_to_one(T)
                 set_to_one(result)
 
                 # exp(A) = 1 + A + A^2/2 + ...
                 for taylor_index in range(cutoff):
-                    # TOld = T
+                    # T_old = T
                     for x_index in nb.prange(2):
                         for y_index in nb.prange(2):
-                            TOld[y_index, x_index] = T[y_index, x_index]
-                    # T = TOld*A/n
+                            T_old[y_index, x_index] = T[y_index, x_index]
+                    # T = T_old*A/n
                     for x_index in nb.prange(2):
                         for y_index in nb.prange(2):
                             T[y_index, x_index] = 0
                             for z_index in range(2):
-                                T[y_index, x_index] += (TOld[y_index, z_index]*exponent[z_index, x_index])/(taylor_index + 1)
+                                T[y_index, x_index] += (T_old[y_index, z_index]*exponent[z_index, x_index])/(taylor_index + 1)
                     # E = E + T
                     for x_index in nb.prange(2):
                         for y_index in nb.prange(2):
@@ -1415,9 +1511,12 @@ class Utilities:
                 result[2, 2] = 0.5*cisz*(cx + cy + 1j*sx*sy)
 
                 if device_index == 0:
-                    temporary = np.empty((3, 3), dtype = nb.complex128)
+                    temporary = np.empty((3, 3), dtype = np.complex128)
                 elif device_index == 1:
-                    temporary = cuda.local.array((3, 3), dtype = nb.complex128)
+                    temporary = cuda.local.array((3, 3), dtype = np.complex128)
+                elif device_index == 2:
+                    temporary_group = roc.shared.array((threads_per_block, 3, 3), dtype = np.complex128)
+                    temporary = temporary_group[roc.get_local_id(1), :, :]
                 for power_index in range(hyper_cube_amount):
                     matrix_multiply(result, result, temporary)
                     matrix_multiply(temporary, temporary, result)
@@ -1447,29 +1546,32 @@ class Utilities:
                 cutoff : `int`
                     The number of terms in the Taylor expansion (:math:`c` above).
                 """
-                if exponent.shape[0] == 2:
-                    if device_index == 1:
-                        T = cuda.local.array((2, 2), dtype = nb.complex128)
-                        TOld = cuda.local.array((2, 2), dtype = nb.complex128)
-                else:
-                    if device_index == 1:
-                        T = cuda.local.array((3, 3), dtype = nb.complex128)
-                        TOld = cuda.local.array((3, 3), dtype = nb.complex128)
+                if device_index == 0:
+                    T = np.empty((3, 3), dtype = np.complex128)
+                    T_old = np.empty((3, 3), dtype = np.complex128)
+                elif device_index == 1:
+                    T = cuda.local.array((3, 3), dtype = np.complex128)
+                    T_old = cuda.local.array((3, 3), dtype = np.complex128)
+                elif device_index == 2:
+                    T_group = roc.shared.array((threads_per_block, 3, 3), dtype = np.complex128)
+                    T = T_group[roc.get_local_id(1), :, :]
+                    T_old_group = roc.shared.array((threads_per_block, 3, 3), dtype = np.complex128)
+                    T_old = T_old_group[roc.get_local_id(1), :, :]
                 set_to_one(T)
                 set_to_one(result)
 
                 # exp(A) = 1 + A + A^2/2 + ...
                 for taylor_index in range(cutoff):
-                    # TOld = T
+                    # T_old = T
                     for x_index in nb.prange(exponent.shape[0]):
                         for y_index in nb.prange(exponent.shape[0]):
-                            TOld[y_index, x_index] = T[y_index, x_index]
-                    # T = TOld*A/n
+                            T_old[y_index, x_index] = T[y_index, x_index]
+                    # T = T_old*A/n
                     for x_index in nb.prange(exponent.shape[0]):
                         for y_index in nb.prange(exponent.shape[0]):
                             T[y_index, x_index] = 0
                             for z_index in range(exponent.shape[0]):
-                                T[y_index, x_index] += (TOld[y_index, z_index]*exponent[z_index, x_index])/(taylor_index + 1)
+                                T[y_index, x_index] += (T_old[y_index, z_index]*exponent[z_index, x_index])/(taylor_index + 1)
                     # E = E + T
                     for x_index in nb.prange(exponent.shape[0]):
                         for y_index in nb.prange(exponent.shape[0]):
