@@ -55,7 +55,7 @@ for simulation_index, time_step in enumerate(time_steps):
         ]
 
 plt.legend(legend, loc = "lower left")
-plt.xlabel("Time (standard devaitions)")
+plt.xlabel("Time (standard deviations)")
 plt.ylabel("Spin")
 plt.title("{}\nGaussian pulse at various numbers of steps".format(time_now_string))
 plt.savefig("gaussian_pulse.png")
