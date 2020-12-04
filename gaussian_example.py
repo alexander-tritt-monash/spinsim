@@ -16,7 +16,7 @@ def cumulative_gaussian(t):
 
 plt.figure()
 
-time = np.arange(-5.0, 5.0, 2.0)
+time = np.arange(-5.0, 5.1, 2.0)
 state_analytic = np.asarray([[math.cos(0.5*math.pi*cumulative_gaussian(t)), -1j*math.sin(0.5*math.pi*cumulative_gaussian(t))] for t in time], dtype = np.complex128)
 
 simulator = spinsim.Simulator(gaussian_pulse, spinsim.SpinQuantumNumber.HALF)
@@ -38,7 +38,7 @@ time_steps = np.asarray([0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0])
 number_of_steps = 10 / time_steps
 plot_start_index = 4
 for simulation_index, time_step in enumerate(time_steps):
-    state_simulated, time = simulator.get_state(0.0, -5.0, 5.0, time_step, 2.0, np.asarray([1, 0], np.complex128))
+    state_simulated, time = simulator.get_state(0.0, -5.0, 7.0, time_step, 2.0, np.asarray([1, 0], np.complex128))
     spin_simulated = simulator.get_spin(state_simulated)
 
     error += [np.sum(np.abs(state_simulated - state_analytic))/5]
