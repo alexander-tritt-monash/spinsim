@@ -10,3 +10,4 @@ Usage and about
     about.motivation
     about.architecture
     about.quality_control
+    about.cuda_explanation
