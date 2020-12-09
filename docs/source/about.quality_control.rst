@@ -4,7 +4,7 @@ Quality control
 Benchmarks
 ----------
 
-Benchmarks were performed using :mod:`neuralsense.benchmark`, by comparing state evaluations of many different typical metrology experiments and finding the mean error introduced when the fine (integration) time step is increased.
+Benchmarks were performed using :mod:`neuralsense.sim.benchmark`, by comparing state evaluations of many different typical metrology experiments and finding the mean error introduced when the fine (integration) time step is increased.
 
 .. _fig_benchmark_spin_one:
 
@@ -39,4 +39,4 @@ These tests and benchmarks were run as part of the :mod:`neuralsense` package, i
 
 The kernel execution was profiled thoroughly, and changes were made to optimise VRAM and register usage and transfer. This was done specifically for the hardware of an Nvidia GTX1070, so one may get some performance increases by changing some GPU specific metaparameters when instantiating the :class:`spinsim.Simulator` object.
 
-A good way to confirm that :mod:`spinsim` is functioning properly after an installation is to run the tutorial code provided and compare the outputs. Otherwise, one can run the benchmarks and simulation protocols in :mod:`neuralsense`.
+A good way to confirm that :mod:`spinsim` is functioning properly after an installation is to run the tutorial code provided and compare the outputs. Otherwise, one can run the benchmarks and simulation protocols in :mod:`neuralsense.sim.benchmark`.

@@ -876,9 +876,9 @@ class Simulator:
         state_init : :class:`numpy.ndarray` of :class:`numpy.complex128`
             The state (spin wavefunction) of the system at the start of the simulation.
         state : :class:`numpy.ndarray` of :class:`numpy.complex128` (time_index, state_index)
-            The state (wavefunction) of the spin system in the lab frame, for each time sampled. See :math:`\\psi(t)` in :ref:`overview_of_simulation_method`. This is an output.
+            The state (wavefunction) of the spin system in the lab frame, for each time sampled.
         time_evolution : :class:`numpy.ndarray` of :class:`numpy.complex128` (time_index, bra_state_index, ket_state_index)
-            Time evolution operator (matrix) between the current and next timesteps, for each time sampled. See :math:`U(t)` in :ref:`overview_of_simulation_method`.
+            The evaluated time evolution operator between each time step. See :ref:`architecture` for some information.
         """
         for time_index in range(state.shape[0]):
             # State = time evolution * previous state
