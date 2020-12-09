@@ -20,11 +20,6 @@ time = np.arange(-5.0, 5.1, 2.0)
 state_analytic = np.asarray([[math.cos(0.5*math.pi*cumulative_gaussian(t)), -1j*math.sin(0.5*math.pi*cumulative_gaussian(t))] for t in time], dtype = np.complex128)
 
 simulator = spinsim.Simulator(gaussian_pulse, spinsim.SpinQuantumNumber.HALF)
-spin_analytic = simulator.get_spin(state_analytic)
-
-plt.plot(time, spin_analytic[:, 0], "k-o")
-plt.plot(time, spin_analytic[:, 1], "k-x")
-plt.plot(time, spin_analytic[:, 2], "k-+")
 
 legend = [
     "Ana x",
@@ -38,15 +33,14 @@ time_steps = np.asarray([0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0])
 number_of_steps = 10 / time_steps
 plot_start_index = 4
 for simulation_index, time_step in enumerate(time_steps):
-    state_simulated, time = simulator.get_state(0.0, -5.0, 7.0, time_step, 2.0, np.asarray([1, 0], np.complex128))
-    spin_simulated = simulator.get_spin(state_simulated)
+    result_simulated = simulator.evaluate(0.0, -5.0, 7.0, time_step, 2.0, np.asarray([1, 0], np.complex128))
 
-    error += [np.sum(np.abs(state_simulated - state_analytic))/5]
+    error += [np.sum(np.abs(result_simulated.state - state_analytic))/5]
 
     if simulation_index >= plot_start_index:
-        plt.plot(time, spin_simulated[:, 0], colours[simulation_index - plot_start_index] + "--o")
-        plt.plot(time, spin_simulated[:, 1], colours[simulation_index - plot_start_index] + "--x")
-        plt.plot(time, spin_simulated[:, 2], colours[simulation_index - plot_start_index] + "--+")
+        plt.plot(time, result_simulated.spin[:, 0], colours[simulation_index - plot_start_index] + "--o")
+        plt.plot(time, result_simulated.spin[:, 1], colours[simulation_index - plot_start_index] + "--x")
+        plt.plot(time, result_simulated.spin[:, 2], colours[simulation_index - plot_start_index] + "--+")
 
         legend += [
             "{:d} x".format(int(number_of_steps[simulation_index])),

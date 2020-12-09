@@ -235,6 +235,64 @@ class Device(Enum):
 
     """
 
+class Results:
+    """
+    The results of a an evaluation of the integrator.
+
+    Attributes
+    ----------
+    time : :obj:`numpy.ndarray` of :obj:`numpy.float64` (time_index)
+        The times that `state` was evaluated at.
+    time_evolution : :obj:`numpy.ndarray` of :obj:`numpy.float128` (time_index, y_index, x_index)
+        The evaluated time evolution operator between each time step. See :ref:`architecture` for some information.
+    state : :obj:`numpy.ndarray` of :obj:`numpy.complex128` (time_index, magnetic_quantum_number)
+        The evaluated quantum state of the spin system over time, written in terms of the eigenstates of the spin projection operator in the z direction.
+    spin : :obj:`numpy.ndarray` of :obj:`numpy.float64` (time_index, spatial_direction)
+        The expected spin projection (Bloch vector) over time. This is calculated just in time using the JITed :obj:`callable` `spin_calculator`.
+    spin_calculator : :obj:`callable`
+        Calculates the expected spin projection (Bloch vector) over time for a given time series of a quantum state. Used to calculate `spin` the first time it is referenced by the user.
+
+        Parameters:
+        
+        * **state** (:obj:`numpy.ndarray` of :obj:`numpy.complex128` (time_index, magnetic_quantum_number)) - The quantum state of the spin system over time, written in terms of the eigenstates of the spin projection operator in the z direction.
+
+        Returns:
+        
+        * **spin** (:obj:`numpy.ndarray` of :obj:`numpy.float64` (time_index, spatial_direction)) - The expected spin projection (Bloch vector) over time.
+    """
+    def __init__(self, time, time_evolution, state, spin_calculator):
+        """
+        Parameters
+        ----------
+        time : :obj:`numpy.ndarray` of :obj:`numpy.float64` (time_index)
+            The times that `state` was evaluated at.
+        time_evolution : :obj:`numpy.ndarray` of :obj:`numpy.float128` (time_index, y_index, x_index)
+            The evaluated time evolution operator between each time step. See :ref:`architecture` for some information.
+        state : :obj:`numpy.ndarray` of :obj:`numpy.complex128` (time_index, magnetic_quantum_number)
+            The evaluated quantum state of the spin system over time, written in terms of the eigenstates of the spin projection operator in the z direction.
+        spin_calculator : :obj:`callable`
+            Calculates the expected spin projection (Bloch vector) over time for a given time series of a quantum state. Used to calculate `spin` the first time it is referenced by the user.
+
+            Parameters:
+            
+            * **state** (:obj:`numpy.ndarray` of :obj:`numpy.complex128` (time_index, magnetic_quantum_number)) - The quantum state of the spin system over time, written in terms of the eigenstates of the spin projection operator in the z direction.
+
+            Returns:
+            
+            * **spin** (:obj:`numpy.ndarray` of :obj:`numpy.float64` (time_index, spatial_direction)) - The expected spin projection (Bloch vector) over time.
+        """
+        self.time = time
+        self.time_evolution = time_evolution
+        self.state = state
+        self.spin_calculator = spin_calculator
+
+    def __getattr__(self, attr_name):
+        if attr_name == "spin":
+            spin = self.spin_calculator(self.state)
+            setattr(self, attr_name, spin)
+            return self.spin
+        raise AttributeError("{} has no attribute called {}.".format(self, attr_name))
+
 class Simulator:
     """
     Attributes
@@ -256,13 +314,15 @@ class Simulator:
         * **time_step_fine** (:obj:`float`) - The integration time step. Measured in s.
         * **time_step_coarse** (:obj:`float`) - The sample resolution of the output timeseries for the state. Must be a whole number multiple of `time_step_fine`. Measured in s.
         * **time_evolution_coarse** (:obj:`numpy.ndarray` of :obj:`numpy.float128` (time_index, y_index, x_index)) - The evaluated time evolution operator between each time step. See :ref:`architecture` for some information.
-
-    get_spin_raw: :obj:`callable`
-        The internal function for evaluating expected spin from the state in parallel. Compiled for chosen device on object constrution.
+    spin_calculator : :obj:`callable`
+        Calculates the expected spin projection (Bloch vector) over time for a given time series of a quantum state. This :obj:`callable` is passed to the :obj:`Results` object returned from :func:`Simulator.evaluate()`, and is executed there just in time if the `spin` property is needed. Compiled for chosen device on object constrution.
 
         Parameters:
+        
+        * **state** (:obj:`numpy.ndarray` of :obj:`numpy.complex128` (time_index, magnetic_quantum_number)) - The quantum state of the spin system over time, written in terms of the eigenstates of the spin projection operator in the z direction.
 
-        * **state** (:obj:`numpy.ndarray`) of :obj:`numpy.complex128` (time_index, magnetic_quantum_number)) - The quantum state of the spin system over time, written in terms of the eigenstates of the spin projection operator in the z direction.
+        Returns:
+        
         * **spin** (:obj:`numpy.ndarray` of :obj:`numpy.float64` (time_index, spatial_direction)) - The expected spin projection (Bloch vector) over time.
     """
     def __init__(self, get_field, spin_quantum_number, device = None, exponentiation_method = None, use_rotating_frame = True, integration_method = IntegrationMethod.MAGNUS_CF4, trotter_cutoff = 28, threads_per_block = 64, max_registers = 63):
@@ -705,10 +765,39 @@ class Simulator:
                         spin[time_index, 2] = state[time_index, 0].real**2 + state[time_index, 0].imag**2 - state[time_index, 2].real**2 - state[time_index, 2].imag**2
             return
 
-        self.get_time_evolution_raw = get_time_evolution
-        self.get_spin_raw = get_spin
+        def spin_calculator(state):
+            """
+            Calculates the expected spin projection (Bloch vector) over time for a given time series of a quantum state.
 
-    def get_state(self, field_modifier, time_start, time_end, time_step_fine, time_step_coarse, state_init):
+            Parameters
+            ----------
+            state : :obj:`numpy.ndarray` of :obj:`numpy.complex128` (time_index, magnetic_quantum_number)
+                The quantum state of the spin system over time, written in terms of the eigenstates of the spin projection operator in the z direction.
+
+            Returns
+            -------
+            spin : :obj:`numpy.ndarray` of :obj:`numpy.float64` (time_index, spatial_direction)
+                The expected spin projection (Bloch vector) over time.
+            """
+            if device.index == 0:
+                spin = np.empty((state.shape[0], 3), np.float64)
+                get_spin(state, spin)
+            elif device == Device.CUDA:
+                spin = cuda.device_array((state.shape[0], 3), np.float64)
+                blocks_per_grid = (state.shape[0] + (threads_per_block - 1)) // threads_per_block
+                get_spin[blocks_per_grid, threads_per_block](cuda.to_device(state), spin)
+                spin = spin.copy_to_host()
+            elif device == Device.ROC:
+                spin = roc.device_array((state.shape[0], 3), np.float64)
+                blocks_per_grid = (state.shape[0] + (threads_per_block - 1)) // threads_per_block
+                get_spin[blocks_per_grid, threads_per_block](roc.to_device(state), spin)
+                spin = spin.copy_to_host()
+            return spin
+
+        self.get_time_evolution_raw = get_time_evolution
+        self.spin_calculator = spin_calculator
+
+    def evaluate(self, field_modifier, time_start, time_end, time_step_fine, time_step_coarse, state_init):
         """
         Integrates the time dependent Schroedinger equation and returns the quantum state of the spin system over time.
 
@@ -729,10 +818,8 @@ class Simulator:
 
         Returns
         -------
-        state : :obj:`numpy.ndarray` of :obj:`numpy.complex128` (time_index, magnetic_quantum_number)
-            The evaluated quantum state of the spin system over time, written in terms of the eigenstates of the spin projection operator in the z direction.
-        time : :obj:`numpy.ndarray` of :obj:`numpy.float64` (time_index)
-            The times that `state` was evaluated at.
+        results : :obj:`Results`
+            An object containing the results of the simulation.
         """
         time_end_points = np.asarray([time_start, time_end], np.float64)
         state_init = np.asarray(state_init, np.complex128)
@@ -740,96 +827,68 @@ class Simulator:
         time_index_max = int((time_end_points[1] - time_end_points[0])/time_step_coarse)
         if self.device.index == 0:
             time = np.empty(time_index_max, np.float64)
-            self.time_evolution_coarse = np.empty((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
+            time_evolution_coarse = np.empty((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
 
-            self.get_time_evolution_raw(field_modifier, time, time_end_points, time_step_fine, time_step_coarse, self.time_evolution_coarse)
+            self.get_time_evolution_raw(field_modifier, time, time_end_points, time_step_fine, time_step_coarse, time_evolution_coarse)
 
         elif self.device == Device.CUDA:
             time = cuda.device_array(time_index_max, np.float64)
-            self.time_evolution_coarse = cuda.device_array((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
+            time_evolution_coarse = cuda.device_array((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
 
             blocks_per_grid = (time.size + (self.threads_per_block - 1)) // self.threads_per_block
             try:
-                self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](field_modifier, time, time_end_points, time_step_fine, time_step_coarse, self.time_evolution_coarse)
+                self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](field_modifier, time, time_end_points, time_step_fine, time_step_coarse, time_evolution_coarse)
             except:
                 print("\033[31mspinsim error: numba.cuda could not jit get_field function into a cuda device function.\033[0m\n")
                 raise
 
-            self.time_evolution_coarse = self.time_evolution_coarse.copy_to_host()
+            time_evolution_coarse = time_evolution_coarse.copy_to_host()
             time = time.copy_to_host()
         
         elif self.device == Device.ROC:
             time = roc.device_array(time_index_max, np.float64)
-            self.time_evolution_coarse = roc.device_array((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
+            time_evolution_coarse = roc.device_array((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
 
             blocks_per_grid = (time.size + (self.threads_per_block - 1)) // self.threads_per_block
             try:
-                self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](field_modifier, time, time_end_points, time_step_fine, time_step_coarse, self.time_evolution_coarse)
+                self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](field_modifier, time, time_end_points, time_step_fine, time_step_coarse, time_evolution_coarse)
             except:
                 print("\033[31mspinsim error: numba.roc could not jit get_field function into a roc device function.\033[0m\n")
                 raise
 
-            self.time_evolution_coarse = self.time_evolution_coarse.copy_to_host()
+            time_evolution_coarse = time_evolution_coarse.copy_to_host()
             time = time.copy_to_host()
 
         state = np.empty((time_index_max, self.spin_quantum_number.dimension), np.complex128)
-        get_state(state_init, state, self.time_evolution_coarse)
+        self.get_state(state_init, state, time_evolution_coarse)
 
-        return state, time
+        results = Results(time, time_evolution_coarse, state, self.spin_calculator)
+        return results
 
-    def get_spin(self, state):
+    @staticmethod
+    @nb.njit
+    def get_state(state_init, state, time_evolution):
         """
-        Calculates the expected spin projection (Bloch vector) over time for a given time series of a quantum state.
+        Use the stepwise time evolution operators in succession to find the quantum state timeseries of the 3 level atom.
 
         Parameters
         ----------
-        state : :obj:`numpy.ndarray` of :obj:`numpy.complex128` (time_index, magnetic_quantum_number)
-            The quantum state of the spin system over time, written in terms of the eigenstates of the spin projection operator in the z direction.
-
-        Returns
-        -------
-        spin : :obj:`numpy.ndarray` of :obj:`numpy.float64` (time_index, spatial_direction)
-            The expected spin projection (Bloch vector) over time.
+        state_init : :class:`numpy.ndarray` of :class:`numpy.complex128`
+            The state (spin wavefunction) of the system at the start of the simulation.
+        state : :class:`numpy.ndarray` of :class:`numpy.complex128` (time_index, state_index)
+            The state (wavefunction) of the spin system in the lab frame, for each time sampled. See :math:`\\psi(t)` in :ref:`overview_of_simulation_method`. This is an output.
+        time_evolution : :class:`numpy.ndarray` of :class:`numpy.complex128` (time_index, bra_state_index, ket_state_index)
+            Time evolution operator (matrix) between the current and next timesteps, for each time sampled. See :math:`U(t)` in :ref:`overview_of_simulation_method`.
         """
-        if self.device.index == 0:
-            spin = np.empty((state.shape[0], 3), np.float64)
-            self.get_spin_raw(state, spin)
-        elif self.device == Device.CUDA:
-            spin = cuda.device_array((state.shape[0], 3), np.float64)
-            blocks_per_grid = (state.shape[0] + (self.threads_per_block - 1)) // self.threads_per_block
-            self.get_spin_raw[blocks_per_grid, self.threads_per_block](cuda.to_device(state), spin)
-            spin = spin.copy_to_host()
-        elif self.device == Device.ROC:
-            spin = roc.device_array((state.shape[0], 3), np.float64)
-            blocks_per_grid = (state.shape[0] + (self.threads_per_block - 1)) // self.threads_per_block
-            self.get_spin_raw[blocks_per_grid, self.threads_per_block](roc.to_device(state), spin)
-            spin = spin.copy_to_host()
-        return spin
-
-
-@nb.jit(nopython = True)
-def get_state(state_init, state, time_evolution):
-    """
-    Use the stepwise time evolution operators in succession to find the quantum state timeseries of the 3 level atom.
-
-    Parameters
-    ----------
-    state_init : :class:`numpy.ndarray` of :class:`numpy.complex128`
-        The state (spin wavefunction) of the system at the start of the simulation.
-    state : :class:`numpy.ndarray` of :class:`numpy.complex128` (time_index, state_index)
-        The state (wavefunction) of the spin system in the lab frame, for each time sampled. See :math:`\\psi(t)` in :ref:`overview_of_simulation_method`. This is an output.
-    time_evolution : :class:`numpy.ndarray` of :class:`numpy.complex128` (time_index, bra_state_index, ket_state_index)
-        Time evolution operator (matrix) between the current and next timesteps, for each time sampled. See :math:`U(t)` in :ref:`overview_of_simulation_method`.
-    """
-    for time_index in range(state.shape[0]):
-        # State = time evolution * previous state
-        for x_index in nb.prange(state.shape[1]):
-            state[time_index, x_index] = 0
-            if time_index > 0:
-                for z_index in range(state.shape[1]):
-                    state[time_index, x_index] += time_evolution[time_index - 1, x_index, z_index]*state[time_index - 1, z_index]
-            else:
-                state[time_index, x_index] += state_init[x_index]
+        for time_index in range(state.shape[0]):
+            # State = time evolution * previous state
+            for x_index in nb.prange(state.shape[1]):
+                state[time_index, x_index] = 0
+                if time_index > 0:
+                    for z_index in range(state.shape[1]):
+                        state[time_index, x_index] += time_evolution[time_index - 1, x_index, z_index]*state[time_index - 1, z_index]
+                else:
+                    state[time_index, x_index] += state_init[x_index]
 
 sqrt2 = math.sqrt(2)
 sqrt3 = math.sqrt(3)
@@ -850,7 +909,7 @@ class Utilities:
             a, b &\\in \\mathbb{R}
             \\end{align*}
 
-        Parameters
+        Parameters:
 
         * **z** (:class:`numpy.complex128`) - The complex number to take the conjugate of.
         
@@ -867,7 +926,7 @@ class Utilities:
             a, b &\\in \\mathbb{R}
             \\end{align*}
         
-        Parameters
+        Parameters:
 
         * **z** (:class:`numpy.complex128`) - The complex number to take the absolute value of.
         
@@ -881,7 +940,7 @@ class Utilities:
         .. math::
             \|a + ib\|_2 = \\sqrt {\\left(\\sum_i a_i^2 + b_i^2\\right)}
 
-        Parameters
+        Parameters:
         
         * **z** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (index)) - The vector to take the 2 norm of.
 
@@ -901,7 +960,7 @@ class Utilities:
             l \\cdot r &= \\sum_i (l_i)^* r_i
             \\end{align*}
 
-        Parameters
+        Parameters:
         
         * **left** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (index)) - The vector to left multiply in the inner product.
         * **right** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (index)) - The vector to right multiply in the inner product.
@@ -916,7 +975,7 @@ class Utilities:
         .. math::
             (A)_{i, j} = (B)_{i, j}
 
-        Parameters
+        Parameters:
         
         * **operator** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - The matrix to copy from.
         * **result** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - The matrix to copy to.
@@ -933,7 +992,7 @@ class Utilities:
             \\end{cases}
             \\end{align*}
 
-        Parameters
+        Parameters:
         
         * **operator** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - The matrix to set to :math:`1`.
 
@@ -945,7 +1004,7 @@ class Utilities:
             (A)_{i, j} = 0
             \\end{align*}
 
-        Parameters
+        Parameters:
         
         * **operator** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - The matrix to set to :math:`0`.
 
@@ -957,7 +1016,7 @@ class Utilities:
             (LR)_{i,k} = \\sum_j (L)_{i,j} (R)_{j,k}
             \\end{align*}
 
-        Parameters
+        Parameters:
         
         * **left** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - The matrix to left multiply by.
         * **right** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - The matrix to right multiply by.
@@ -974,7 +1033,7 @@ class Utilities:
         
         Matrix can be in :math:`\\mathbb{C}^{2\\times2}` or :math:`\\mathbb{C}^{3\\times3}`.
 
-        Parameters
+        Parameters:
         
         * **operator** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - The operator to take the adjoint of.
         * **result** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - An array to write the resultant adjoint to.
@@ -1024,7 +1083,7 @@ class Utilities:
 
         with :math:`r = \\sqrt{x^2 + y^2 + z^2}`.
 
-        Parameters
+        Parameters:
         
         * **field_sample** (:class:`numpy.ndarray` of :class:`numpy.float64`, (y_index, x_index)) - The values of x, y and z respectively, as described above.
         * **result** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - The matrix which the result of the exponentiation is to be written to.
@@ -1153,7 +1212,7 @@ class Utilities:
         
         Once :math:`T` is calculated, it is then recursively squared :math:`\\tau` times to obtain :math:`\\exp(A)`.
 
-        Parameters
+        Parameters:
         
         * **field_sample** (:class:`numpy.ndarray` of :class:`numpy.float64`, (y_index, x_index)) - The values of x, y and z (and q for spin one) respectively, as described above.
         * **result** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - The matrix which the result of the exponentiation is to be written to.
