@@ -36,7 +36,7 @@ This means that a time series for the state of the system can be evaluated by ev
 
 with :math:`\mathrm{D}t` the time step of the time series.
 
-Also importantly, while each of the :math:`\psi_k` must be evaluated sequentially, the value of the :math:`U_k` is independent of the value of any :math:`\psi_{k_0}`, or any other :math:`U_{k_0}`. This means that the time evolution operators :math:`U_k` can all be calculated in parallel. This allows :mod:`spinsim` to use GPU parallelisation on the level of time sample points, so a speed up is achieved even if a single simulation is run.
+Also importantly, while each of the :math:`\psi_k` must be evaluated sequentially, the value of the :math:`U_k` is independent of the value of any :math:`\psi_{k_0}`, or any other :math:`U_{k_0}`. This means that the time evolution operators :math:`U_k` can all be calculated in parallel, and it allows :mod:`spinsim` to use GPU parallelisation on the level of time sample points, so a speed up is achieved even if just a single simulation is run.
 
 Rotating frame
 ..............
@@ -50,7 +50,7 @@ If the rotating frame option is selected, the :math:`U_k` are first calculated w
         f^r_q(t) &= f_q(t), \textrm{ for spin one.}\\
     \end{align*}
 
-This, (assuming that a midpoint sample is representative of the average value over the time interval), decreases the magnitude of :math:`f_z(t)`, while leaving the other source components at an equivalent magnitude. The rotation is then applied to obtain the lab frame time evolution operator :math:`U_k`,
+This, (assuming that a midpoint sample is representative of an average value over the time interval), decreases the magnitude of :math:`f_z(t)`, while leaving the other source components at an equivalent magnitude. The rotation is then applied to obtain the lab frame time evolution operator :math:`U_k`,
 
 .. math::
     \begin{align*}
@@ -69,7 +69,7 @@ This, (assuming that a midpoint sample is representative of the average value ov
 Magnus based integration method
 ...............................
 
-The integration method used in :mod:`spinsim` is the CF4 method from :cite:`auer_magnus_2018`. Each of the :math:`U_k` are split into products
+The integration method used in :mod:`spinsim` is the CF4 method from :cite:`auer_magnus_2018`. Each of the :math:`U_k` are split into products of time evolution operators between times separated by a smaller timestep,
 
 .. math::
     \begin{align*}
@@ -121,7 +121,7 @@ Software architecture
 Integrator architecture
 .......................
 
-The integrator in the :mod:`spinsim` package calls a :func:`numba.cuda.jit()`\ ed kernel to be run on a cuda capable Nvidia GPU i parallel, with a different thread being allocated to each of the :math:`U_k`. This returns when each of the :math:`U_k` have been evaluated.
+The integrator in the :mod:`spinsim` package calls a :func:`numba.cuda.jit()`\ ed kernel to be run on a cuda capable Nvidia GPU in parallel, with a different thread being allocated to each of the :math:`U_k`. This returns when each of the :math:`U_k` have been evaluated.
 
 The thread starts by calculating :math:`t_k` and, if the rotating frame is being used, :math:`f_r`. The latter is done by sampling a (:func:`numba.cuda.jit()`\ ed version of a) user provided python function describing how to sample the source Hamiltonian. The code then loops over each fine time step :math:`\mathrm{d}t` to calculate the fine time evolution operators :math:`u^k_l`.
 
@@ -132,6 +132,6 @@ When the loop has finished, if the rotating frame is being used, :math:`U^r_k` i
 Compilation of integrator
 .........................
 
-The :mod:`spinsim` integrator is constructed and compiled just in time, using :func:`numba.cuda.jit()`. The particular device functions used are not predetermined, but are instead chosen based off user input to decide a closure. This structure has multiple advantages. Firstly, the source function :math:`f` is provided by the user as a plain python function (that must be :func:`numba.cuda.jit()` compatible). This allows users to define :math:`f` in a way that compiles and executes fast, does not put many restrictions on the form of the function, and returns the accurate results of analytic functions (compared to the errors seen in interpolation). It also allows the user to set metaparameters, and choose the features they want to use, in a way that does not require experience with the :mod:`numba.cuda` library. This was especially useful for running benchmarks comparing old integration methods to new ones, like CF4. The default settings should be optimal for most users, although tuning the values of cuda metaparameters `max_registers` and `threads_per_block` could improve performance for GPUs with a differing number of registers and cuda cores to the mobile GTX1070 used in testing here.
+The :mod:`spinsim` integrator is constructed and compiled just in time, using :func:`numba.cuda.jit()`. The particular device functions used are not predetermined, but are instead chosen based off user input to decide a closure. This structure has multiple advantages. Firstly, the source function :math:`f` is provided by the user as a plain python function (that must be :func:`numba.cuda.jit()` compatible). This allows users to define :math:`f` in a way that compiles and executes fast, does not put many restrictions on the form of the function, and returns the accurate results of analytic functions (compared to the errors seen in interpolation). It also allows the user to set metaparameters, and choose the features they want to use, in a way that does not require experience with the :mod:`numba.cuda` library. This was especially useful for running benchmarks comparing old integration methods to new ones, like CF4. The default settings should be optimal for most users, although tuning the values of cuda metaparameters `max_registers` and `threads_per_block` could improve performance for GPUs with a differing number of registers and cuda cores to the mobile GTX1070 used in testing here. It also allows the user to select a target device other than Cuda for compilation, so the simulator can run, using the same algorithm, on a multicore CPU in parallel if the user so chooses.
 
-This functionality is interfaced through an object of class :class:`spinsim.Simulator`. The cuda kernel is defined as per the user's instructions on construction of the instance, and it is used by calling the method :func:`spinsim.Simulator.get_state()`. The method :func:`spinsim.Simulator.get_spin()` calls a :func:`numba.cuda.jit()`\ ed kernel that can be used to evaluate the spin of the system given its state.
+This functionality is interfaced through an object of class :class:`spinsim.Simulator`. The cuda kernel is defined as per the user's instructions on construction of the instance, and it is used by calling the method :func:`spinsim.Simulator.evaluate()`, which returns a results object including the time, state, time evolution operator, and expected spin projection (that is, Bloch vector; to be calculated as a lazy parameter if needed).
