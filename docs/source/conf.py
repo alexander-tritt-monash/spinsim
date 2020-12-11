@@ -102,7 +102,7 @@ intersphinx_mapping = {
     'numba': ('http://numba.pydata.org/numba-doc/latest/', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
     'matplotlib': ('http://matplotlib.sourceforge.net/', None),
-    'neuralsense' : ('https://neural-sense.readthedocs.io/en/latest/', None)
-    }
+    'neural-sense': ('https://neural-sense.readthedocs.io/en/latest/', None)
+}
 
 # add_module_names = False
