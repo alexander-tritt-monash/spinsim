@@ -223,7 +223,7 @@ Let's first introduce the Rabi system. As before, we split the energy levels of 
 In general, :mod:`spinsim` can solve Schroedinger equations of the form
 
 .. math::
-   \frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (f_x(t) J_x + f_y(t) J_y + f_z(t) J_z + f_q(t) J_q) \psi(t).
+   \frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (f_x(t) J_x + f_y(t) J_y + f_z(t) J_z + f_q(t) Q) \psi(t).
 
 where now :math:`\psi(t) \in \mathbb{C}^3`, and the spin one operators are given by
 
@@ -244,14 +244,14 @@ where now :math:`\psi(t) \in \mathbb{C}^3`, and the spin one operators are given
          0 & 0 &  0 \\
          0 & 0 & -1
       \end{pmatrix},&
-      J_q &= \frac{1}{3}\begin{pmatrix}
+      Q &= \frac{1}{3}\begin{pmatrix}
          1 &  0 & 0 \\
          0 & -2 & 0 \\
          0 &  0 & 1
       \end{pmatrix}.
    \end{align*}
 
-:math:`J_x, J_y, J_z` are regular spin operators, and :math:`J_q` is a quadratic operator, proportional to :math:`Q_{zz}` as defined by :cite:`hamley_spin-nematic_2012`, and :math:`Q_0` as defined by :cite:`di_dipolequadrupole_2010`.
+:math:`J_x, J_y, J_z` are regular spin operators, and :math:`Q` is a quadratic operator, proportional to :math:`Q_{zz}` as defined by :cite:`hamley_spin-nematic_2012`, and :math:`Q_0` as defined by :cite:`di_dipolequadrupole_2010`.
 
 Just as before, we must define a source function, this time being time dependent.
 

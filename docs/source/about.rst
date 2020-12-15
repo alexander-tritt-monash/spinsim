@@ -5,9 +5,9 @@ Usage and about
     :maxdepth: 4
     :caption: Contents:
 
-    about.use_potential
     about.examples
     about.motivation
     about.architecture
     about.quality_control
+    about.use_potential
     about.cuda_explanation

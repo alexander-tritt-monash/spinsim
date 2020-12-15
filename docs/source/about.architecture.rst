@@ -95,8 +95,8 @@ The fine time evolution operator can then be calculated using
     \begin{align*}
         g_1 =& 2 \pi \mathrm{d}t \left(\frac{3 + 2 \sqrt{3}}{12} f(t_1) + \frac{3 - 2 \sqrt{3}}{12} f(t_2)\right)\\
         g_2 =& 2 \pi \mathrm{d}t \left(\frac{3 - 2 \sqrt{3}}{12} f(t_1) + \frac{3 + 2 \sqrt{3}}{12} f(t_2)\right)\\
-        u =& \exp(-i \left( g_{2,x} J_x + g_{2,y} J_y + g_{2,z} J_z + g_{2,q} J_q\right))\\
-        &\cdot\exp(-i \left( g_{1,x} J_x + g_{1,y} J_y + g_{1,z} J_z + g_{1,q} J_q\right)).
+        u =& \exp(-i \left( g_{2,x} J_x + g_{2,y} J_y + g_{2,z} J_z + g_{2,q} Q\right))\\
+        &\cdot\exp(-i \left( g_{1,x} J_x + g_{1,y} J_y + g_{1,z} J_z + g_{1,q} Q\right)).
     \end{align*}
 
 Exponentiator
@@ -106,14 +106,14 @@ For all exponentiation, the exponentiator takes exponent in the form of
 
 .. math::
     \begin{align*}
-        E(g) &= \exp(-i (g_x J_x + g_y J_y + g_z J_z + g_q J_q)), \textrm{ with}\\
+        E(g) &= \exp(-i (g_x J_x + g_y J_y + g_z J_z + g_q Q)), \textrm{ with}\\
         g &= (g_x, g_y, g_z, g_q)
     \end{align*}
 
 
 For spin half, the default exponentiator is in an analytic form. For spin one, an exponentiator based on the Lie Trotter product formula is used. Importantly, these two methods both use analytic forms of exponentials to construct the result, meaning that all calculated time evolution operators are unitary.
 
-This also means that the package cannot solve arbitrary spin one quantum systems, as that would require the ability to exponentiate a point in the full, 8 dimensional Lie algebra of :math:`\mathfrak{su}(3)`, rather than just the four dimensional subspace spanned by the subalgebra :math:`\mathfrak{su}(2)` spanned by :math:`\{J_x, J_y, J_z\}`, and the single quadratic operator :math:`J_q`. Including the full algebra could be possible as a feature update if there is demand for it, though just including this subspace is sufficient for our application, and many others.
+This also means that the package cannot solve arbitrary spin one quantum systems, as that would require the ability to exponentiate a point in the full, 8 dimensional Lie algebra of :math:`\mathfrak{su}(3)`, rather than just the four dimensional subspace spanned by the subalgebra :math:`\mathfrak{su}(2)` spanned by :math:`\{J_x, J_y, J_z\}`, and the single quadratic operator :math:`Q`. Including the full algebra could be possible as a feature update if there is demand for it, though just including this subspace is sufficient for our application, and many others.
 
 Software architecture
 ---------------------

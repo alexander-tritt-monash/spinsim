@@ -102,6 +102,8 @@ intersphinx_mapping = {
     'numba': ('http://numba.pydata.org/numba-doc/latest/', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
     'matplotlib': ('http://matplotlib.sourceforge.net/', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
+    'qutip': ('http://qutip.org/docs/latest/', None),
     'neural-sense': ('https://neural-sense.readthedocs.io/en/latest/', None)
 }
 

@@ -20,7 +20,7 @@ Techniques
 Time interval level parallelisation with Cuda
 .............................................
 
-:mod:`spinsim` uses :mod:`numba.cuda` to split up work on an individual simulation over many GPU cores. This is one of the features that greatly increases speed over AtomicPy. See :ref:`architecture` for full details. This is a different approach to Auer et al\ :cite:`auer_magnus_2018`, who use parallelisation of linear algebra operations to optimise the simulation of much larger dimensional quantum systems systems. :mod:`spinsim` focuses on the optimisation of small, spin half and spin one systems. In addition, :mod:`spinsim` has options to run in parallel on a CPU for if a Cuda compatible device is not available.
+:mod:`spinsim` uses :mod:`numba.cuda` to split up work on an individual simulation over many GPU cores. This is one of the features that greatly increases speed over AtomicPy. See :ref:`architecture` for full details. This is a different approach to Auer et al\ :cite:`auer_magnus_2018`, who use parallelisation of linear algebra operations to optimise the simulation of much larger dimensional quantum systems. :mod:`spinsim` focuses on the optimisation of small, spin half and spin one systems. In addition, :mod:`spinsim` has options to run in parallel on a CPU for if a Cuda compatible device is not available.
 
 Magnus based commutator free integrator
 .......................................
@@ -38,9 +38,11 @@ Features
 Speed and accuracy
 ..................
 
-On :mod:`spinsim`, a typical, 100ms, spin one simulation runs in less than 120ms on a mobile Nvidia GTX1070 (8GiB VRAM, 2048 cuda cores, 1.7GHz boost), with an error of less than :math:`10^{-6}`. In comparison, AtomicPy running the same simulation runs in 12s on a mobile Intel Core i7-8750H (16GiB RAM, 6 cores, 4.1GHz boost). The same integration technique running in :mod:`spinsim` gives an error of :math:`10^{-2}`, so we would expect the same for AtomicPy.
+See :ref:`benchmark` for a more detailed look into performance.
 
-Note that this means that spin one simulations run in essentially real time on the Nvidia GTX1070, and spin half simulations, running in just 30ms, run significantly faster than real time. Also not that these results are for a single simulation (not including compile time). Unlike with solutions of running full simulations all in parallel with each other, having thousands of simulations running concurrently is not required to take advantage of the speed of the :mod:`spinsim` package.
+On :mod:`spinsim`, a typical, 100ms, spin one simulation runs in less than 120ms on a mobile Nvidia GTX1070 (8GiB VRAM, 2048 cuda cores, 1.7GHz boost), with an error of less than :math:`10^{-6}`. In comparison, AtomicPy running the same simulation runs in 12s on a mobile Intel Core i7-8750H (16GiB RAM, 6 cores, 4.1GHz boost). :mod:`spinsim` running using the AtomicPy integration technique gives an error of :math:`10^{-2}`.
+
+Note that this means that spin one simulations run in almost real time on the Nvidia GTX1070, and spin half simulations, running in just 30ms, run significantly faster than real time. Also not that these results are for a single simulation (not including compile time). Unlike with solutions of running full simulations all in parallel with each other, having thousands of simulations running concurrently is not required to take advantage of the speed of the :mod:`spinsim` package.
 
 User defined python function as source
 ......................................
@@ -73,7 +75,7 @@ where :math:`i^2 = -1`, :math:`\psi(t) \in \mathbb{C}^2`, and the spin half spin
 And, when in spin one mode, :mod:`spinsim` can solve Schroedinger equations of the form
 
 .. math::
-   \frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (f_x(t) J_x + f_y(t) J_y + f_z(t) J_z + f_q(t) J_q) \psi(t).
+   \frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (f_x(t) J_x + f_y(t) J_y + f_z(t) J_z + f_q(t) Q) \psi(t).
 
 where now :math:`\psi(t) \in \mathbb{C}^3`, and the spin one operators are given by
 
@@ -94,13 +96,13 @@ where now :math:`\psi(t) \in \mathbb{C}^3`, and the spin one operators are given
          0 & 0 &  0 \\
          0 & 0 & -1
       \end{pmatrix},&
-      J_q &= \frac{1}{3}\begin{pmatrix}
+      Q &= \frac{1}{3}\begin{pmatrix}
          1 &  0 & 0 \\
          0 & -2 & 0 \\
          0 &  0 & 1
       \end{pmatrix}.
    \end{align*}
 
-:math:`J_x, J_y, J_z` are regular spin operators, and :math:`J_q` is a quadratic operator, proportional to :math:`Q_{zz}` as defined by :cite:`hamley_spin-nematic_2012`, and :math:`Q_0` as defined by :cite:`di_dipolequadrupole_2010`. The quadratic operator is required, for example, when solving Schroedinger equations in atomic physics involving single photon radio transitions, where the quadratic coupling :math:`f_q(t)` is proportional to the square of the magnetic field strength :math:`|B(t)|^2`.
+:math:`J_x, J_y, J_z` are regular spin operators, and :math:`Q` is a quadratic operator, proportional to :math:`Q_{zz}` as defined by :cite:`hamley_spin-nematic_2012`, and :math:`Q_0` as defined by :cite:`di_dipolequadrupole_2010`. The quadratic operator is required, for example, when solving Schroedinger equations in atomic physics involving single photon radio transitions, where the quadratic coupling :math:`f_q(t)` is proportional to the square of the magnetic field strength :math:`|B(t)|^2`.
 
 The user provides a :func:`numba.cuda.jit()`\ able function (or, in general, a function compilable for the user selected target device) that samples the Hamiltonian at a certain input time `time_sample`, which writes to the array `field_sample`, which has three (four) entries for spin half (one) representing the numerical values of :math:`f_x(t),f_y(t),f_z(t)` (:math:`f_q(t)`). There is also a second input, `field_modifier` which allows for multiple versions of a simulation to be swept over using a single compiled function.  This prevents time being wasted by compiling new integrators for each new field description. See :ref:`examples` for a tutorial of using this in practice, and :class:`spinsim.Simulator` for a full reference.
