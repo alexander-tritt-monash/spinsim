@@ -15,6 +15,54 @@ def cumulative_gaussian(t):
     return 0.5*(1 + math.erf(t/math.sqrt(2.0)))
 
 plt.figure()
+pulse_sample = np.empty(3, np.float64)
+
+time_continuous = np.arange(-5.0, 5.0005, 1e-3)
+pulse_continuous = []
+for time_sample in time_continuous:
+    gaussian_pulse(time_sample, 0, pulse_sample)
+    pulse_continuous += [pulse_sample[0]]
+pulse_continuous = np.asarray(pulse_continuous)
+plt.plot(time_continuous, pulse_continuous, "k-")
+
+time_step = 0.25
+time_midpoint = 0.5*time_step + np.arange(-5.0, 5.0, time_step)
+pulse_midpoint = []
+for time_sample in time_midpoint:
+    gaussian_pulse(time_sample, 0, pulse_sample)
+    pulse_midpoint += [pulse_sample[0]]
+pulse_midpoint = np.asarray(pulse_midpoint)
+plt.plot(time_midpoint, pulse_midpoint, "bo")
+
+time_quadrature = []
+pulse_quadrature = []
+for time_sample in time_midpoint:
+    gaussian_pulse(time_sample - 0.5*time_step/math.sqrt(3), 0, pulse_sample)
+    time_quadrature += [time_sample - 0.5*time_step/math.sqrt(3)]
+    pulse_quadrature += [pulse_sample[0]]
+
+    gaussian_pulse(time_sample + 0.5*time_step/math.sqrt(3), 0, pulse_sample)
+    time_quadrature += [time_sample + 0.5*time_step/math.sqrt(3)]
+    pulse_quadrature += [pulse_sample[0]]
+time_quadrature = np.asarray(time_quadrature)
+pulse_quadrature = np.asarray(pulse_quadrature)
+plt.plot(time_quadrature, pulse_quadrature, "m.")
+
+plt.xlabel("Time (standard deviations)")
+plt.ylabel("Pulse strength (Hz)")
+plt.legend(
+    [
+        "Pulse shape",
+        "Integration steps",
+        "Pulse sample points"
+    ]
+)
+plt.title("{}\nSample points for integrating Gaussian pulse".format(time_now_string))
+plt.savefig("gaussian_pulse_sample.png")
+plt.savefig("gaussian_pulse_sample.pdf")
+plt.show()
+
+plt.figure()
 
 time = np.arange(-5.0, 5.1, 2.0)
 state_analytic = np.asarray([[math.cos(0.5*math.pi*cumulative_gaussian(t)), -1j*math.sin(0.5*math.pi*cumulative_gaussian(t))] for t in time], dtype = np.complex128)
@@ -55,7 +103,7 @@ plt.savefig("gaussian_pulse.pdf")
 plt.show()
 
 plt.figure()
-plt.loglog(number_of_steps, error, "-x")
+plt.loglog(number_of_steps, error, "-rx")
 plt.xlabel("Number of steps")
 plt.ylabel("Error")
 plt.title("{}\nError in integrating Gaussian pulse".format(time_now_string))
