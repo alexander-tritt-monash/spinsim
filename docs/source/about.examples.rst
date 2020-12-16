@@ -3,8 +3,8 @@
 Examples of use
 ===============
 
-Basic example: Spin half Larmor precession
-------------------------------------------
+Example 1: Spin half Larmor precession
+--------------------------------------
 
 Full code
 .........
@@ -149,12 +149,12 @@ Has this worked? We can plot the results using :mod:`matplotlib.pyplot` (zoomed 
 
 which results in
 
-.. image:: _images/example_1_1.png
+.. image:: ../../images/example_1_1.png
 
 Here we see that indeed, the bloch vector is precessing anticlockwise at a frequency of 1kHz around the positive z axis.
 
-More advanced example: Time dependent field and sweeping parameters
--------------------------------------------------------------------
+Example 2: Time dependent field and sweeping parameters
+-------------------------------------------------------
 
 Full code
 .........
@@ -323,7 +323,7 @@ Finally we can plot our results.
 
 which gives
 
-.. image:: _images/example_2_1.png
+.. image:: ../../images/example_2_1.png
 
 Notice the spin z projection cycling (Rabi flopping) at a rate of 1KHz, while the spin x and y projections are cycling between each other (Larmor precessing) at a rate of 20kHz. Using the rotating wave approximation, the spin z projection can be thought of as a sine wave. However, when these approximations are not used, one obtains these artifacts that we see on the spin z projection, known as beyond rotating wave effects.
 
@@ -346,9 +346,166 @@ Finally, let's run another experiment using the same compiled function. This wil
 
 which results in
 
-.. image:: _images/example_2_2.png
+.. image:: ../../images/example_2_2.png
 
 See that the spin projections are similar to last time, except that the Larmor precession is now at 40KHz.
+
+Example 3: Gaussian Pi pulse and sampling
+-----------------------------------------
+
+Full code
+.........
+
+.. code-block:: python
+
+   import spinsim
+   import math
+   import numpy as np
+   import matplotlib.pyplot as plt
+   import datetime as dtm
+
+   time_now_string = dtm.datetime.now().strftime("%Y%m%dT%H%M%S")
+
+   def gaussian_pulse(time, modifier, pulse):
+      pulse[0] = (math.pi/math.sqrt(math.tau))*math.exp(-0.5*(time**2))/math.tau
+      pulse[1] = 0.0
+      pulse[2] = 0.0
+
+   def cumulative_gaussian(t):
+      return 0.5*(1 + math.erf(t/math.sqrt(2.0)))
+
+   plt.figure()
+   pulse_sample = np.empty(3, np.float64)
+
+   time_continuous = np.arange(-5.0, 5.0005, 1e-3)
+   pulse_continuous = []
+   for time_sample in time_continuous:
+      gaussian_pulse(time_sample, 0, pulse_sample)
+      pulse_continuous += [pulse_sample[0]]
+   pulse_continuous = np.asarray(pulse_continuous)
+   plt.plot(time_continuous, pulse_continuous, "k-")
+
+   time_step = 0.25
+   time_midpoint = 0.5*time_step + np.arange(-5.0, 5.0, time_step)
+   pulse_midpoint = []
+   for time_sample in time_midpoint:
+      gaussian_pulse(time_sample, 0, pulse_sample)
+      pulse_midpoint += [pulse_sample[0]]
+   pulse_midpoint = np.asarray(pulse_midpoint)
+   plt.plot(time_midpoint, pulse_midpoint, "bo")
+
+   time_quadrature = []
+   pulse_quadrature = []
+   for time_sample in time_midpoint:
+      gaussian_pulse(time_sample - 0.5*time_step/math.sqrt(3), 0, pulse_sample)
+      time_quadrature += [time_sample - 0.5*time_step/math.sqrt(3)]
+      pulse_quadrature += [pulse_sample[0]]
+
+      gaussian_pulse(time_sample + 0.5*time_step/math.sqrt(3), 0, pulse_sample)
+      time_quadrature += [time_sample + 0.5*time_step/math.sqrt(3)]
+      pulse_quadrature += [pulse_sample[0]]
+   time_quadrature = np.asarray(time_quadrature)
+   pulse_quadrature = np.asarray(pulse_quadrature)
+   plt.plot(time_quadrature, pulse_quadrature, "m.")
+
+   plt.xlabel("Time (standard deviations)")
+   plt.ylabel("Pulse strength (Hz)")
+   plt.legend(
+      [
+         "Pulse shape",
+         "Integration steps",
+         "Pulse sample points"
+      ]
+   )
+   plt.title("{}\nSample points for integrating Gaussian pulse".format(time_now_string))
+   plt.savefig("gaussian_pulse_sample.png")
+   plt.savefig("gaussian_pulse_sample.pdf")
+   plt.show()
+
+   plt.figure()
+
+   time = np.arange(-5.0, 5.1, 2.0)
+   state_analytic = np.asarray([[math.cos(0.5*math.pi*cumulative_gaussian(t)), -1j*math.sin(0.5*math.pi*cumulative_gaussian(t))] for t in time], dtype = np.complex128)
+
+   simulator = spinsim.Simulator(gaussian_pulse, spinsim.SpinQuantumNumber.HALF)
+
+   result_compare = simulator.evaluate(0.0, -5.0, 7.0, 1e-6, 2.0, np.asarray([1, 0], np.complex128))
+
+   legend = []
+
+   colours = ["r", "g", "b", "c", "m", "y"]
+   error = []
+   time_steps = np.asarray([0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0])
+   number_of_steps = 10 / time_steps
+   plot_start_index = 4
+   for simulation_index, time_step in enumerate(time_steps):
+      result_simulated = simulator.evaluate(0.0, -5.0, 7.0, time_step, 2.0, np.asarray([1, 0], np.complex128))
+
+      error += [np.sum(np.abs(result_simulated.state - result_compare.state))/5]
+
+      if simulation_index >= plot_start_index:
+         plt.plot(time, result_simulated.spin[:, 0], colours[simulation_index - plot_start_index] + "--o")
+         plt.plot(time, result_simulated.spin[:, 1], colours[simulation_index - plot_start_index] + "--x")
+         plt.plot(time, result_simulated.spin[:, 2], colours[simulation_index - plot_start_index] + "--+")
+
+         legend += [
+               "{:d} x".format(int(number_of_steps[simulation_index])),
+               "{:d} y".format(int(number_of_steps[simulation_index])),
+               "{:d} z".format(int(number_of_steps[simulation_index]))
+         ]
+
+   plt.legend(legend, loc = "lower left")
+   plt.xlabel("Time (standard deviations)")
+   plt.ylabel("Spin")
+   plt.title("{}\nGaussian pulse at various numbers of steps".format(time_now_string))
+   plt.savefig("gaussian_pulse.png")
+   plt.savefig("gaussian_pulse.pdf")
+   plt.show()
+
+   plt.figure()
+   plt.loglog(number_of_steps, error, "-rx")
+   plt.xlabel("Number of steps")
+   plt.ylabel("Error")
+   plt.title("{}\nError in integrating Gaussian pulse".format(time_now_string))
+   plt.ylim((1e-12, 1e0))
+   plt.savefig("gaussian_pulse_error.png")
+   plt.savefig("gaussian_pulse_error.pdf")
+   plt.show()
+
+Explanation
+...........
+
+This is a longer example, and benchmark, to show how :mod:`spinsim` can be used to accurately integrate pulses. Here the spin system is acted on by a Gaussian pi pulse, which is a pulse in the shape of a Gaussian that rotates the Bloch vector (spin projection expectation) by 180 degrees. In this case, this is modelled in the rotating frame, using the rotating wave approximation, as
+
+.. math::
+   \frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i \pi \frac{1}{\sqrt{2\pi}}e^{-\frac{1}{2}t^2} J_x \psi(t).
+
+Note that here we are only interested in the dynamics of the system in the rotating frame itself. One can simulate this system using spinsim with this python function
+
+.. code-block:: python
+
+   def gaussian_pulse(time, modifier, pulse):
+      pulse[0] = (math.pi/math.sqrt(math.tau))*math.exp(-0.5*(time**2))/math.tau
+      pulse[1] = 0.0
+      pulse[2] = 0.0
+
+where the equation could be simplified if not for readability (the first pi is the rotation the Bloch vector is to make in radians, the second is to normalise the Gaussian, and the third is to convert the rotation from units of radians, to units of cycles).
+
+The code simulates the dynamics of this system at various time steps. The following shows the coarsely sampled spin projections for these differing accuracies,
+
+.. image:: ../../images/gaussian_pulse.png
+
+Notice how the Bloch vector rotates from pointing in the z direction, to pointing in the -y direction, and finally pointing in the -z direction after the pulse has completed. A 180 degree rotation has indeed been made.
+
+The following shows how the accuracy of the evaluated state obtained relates to the integration step size used,
+
+.. image:: ../../images/gaussian_pulse_error.png
+
+We find that using 40 steps across the whole -5 to +5 standard deviations of the Gaussian pulse results in an error in the state of less than :math:`10^{-6}`. The integration and time resolution can be seen in the following,
+
+.. image:: ../../images/gaussian_pulse_sample.png
+
+Time steps this coarse are able to be used because of the commutator free Magnus based integrator being used. Each step (in blue) uses two samples (in magenta) to sample the pulse shape (in black).
 
 .. References
 .. ----------

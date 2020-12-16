@@ -38,7 +38,7 @@ Bellow is a basic example of evaluating the state and bloch vector for simulatin
 
 This results in
 
-.. image:: _images/example_1_1.png
+.. image:: ../../images/example_1_1.png
 
 See :ref:`examples` for a tutorial on how to use the package.
 
