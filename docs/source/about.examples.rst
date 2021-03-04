@@ -76,7 +76,7 @@ where :math:`i^2 = -1`, :math:`\psi(t) \in \mathbb{C}^2`, and the spin half spin
       \end{pmatrix}.
    \end{align*}
 
-The source of the system is the collection of energy functions :math:`f_x(t), f_y(t), f_z(t)`, with :math:`t` in units of s and :math:`f` in units of Hz that control the dynamics of the system. The user must define a function that returns a sample of these source functions when a sampling time is input.
+The source of the system is the collection of energy functions :math:`f_x(t), f_y(t), f_z(t)`, with :math:`t` in units of s and :math:`f` in units of Hz that control the dynamics of the system. The user must define a function that returns a sample of these source functions when a sampling time is input. In physical terms, these functions would represent the :math:`x,y,z` components of a magnetic field applied to an atom being simulated, for example.
 
 To continue with our example, the Larmor system follows a Schroedinger equation of
 

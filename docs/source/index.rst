@@ -44,13 +44,29 @@ See :ref:`examples` for a tutorial on how to use the package.
 
 See :ref:`package` for a complete reference to the package.
 
+Installation and requirements
+=============================
+
+:mod:`spinsim` can be installed using
+
+.. code-block:: sh
+
+   pip install spinsim
+
+And the source code can be cloned from the git repository
+
+.. code-block:: sh
+
+   git clone https://github.com/alexander-tritt-monash/spinsim.git
+
+To use the (default) cuda GPU parallelisation, one needs to have a `cuda compatible Nvidia GPU <https://developer.nvidia.com/cuda-gpus>`_. For cuda mode to function, one also needs to install the `Nvidia cuda toolkit <https://developer.nvidia.com/cuda-toolkit>`_. If cuda is not available on the system, the simulator will automatically parallelise over multicore CPUs instead. See the documentation for :class:`spinsim.Simulator` for all simulation options, including how to set the target device manually.
+
 .. toctree::
    :maxdepth: 4
    :caption: Contents:
 
    about
    spinsim
-
 
 Indices and tables
 ==================
