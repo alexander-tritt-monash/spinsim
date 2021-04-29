@@ -106,7 +106,7 @@ Time dependent Schroedinger equation; Spin one; Spin half; Integrator; GPU; Solv
 
 			The energy source \(f\) that represents the time dependent Hamiltonian \(H(t)\), is the collection of energy functions \(f_x(t), f_y(t), f_z(t)\), with \(t\) in units of s and \(f\) in units of Hz that control the dynamics of the system. The user must define a method that returns a sample of these source functions when a sampling time is input. In physical terms, these functions could represent the \(x,y,z\) components of a magnetic field applied to a magnetically sensitive.
 
-			Similarly, when \texttt{spinsim} is set to spin one mode, it can solve Schroedinger equations of the form
+			Similarly, when \texttt{spinsim} is set to spin one mode, it can solve the Schroedinger equation of the form
 
 			\begin{align*}
 				\frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (f_x(t) J_x + f_y(t) J_y + f_z(t) J_z + f_q(t) Q) \psi(t).
@@ -130,20 +130,20 @@ Time dependent Schroedinger equation; Spin one; Spin half; Integrator; GPU; Solv
 					0 & 0 &  0 \\
 					0 & 0 & -1
 				\end{pmatrix},&
-				Q &= \frac{1}{3}\begin{pmatrix}
+				\textrm{and }Q &= \frac{1}{3}\begin{pmatrix}
 					1 &  0 & 0 \\
 					0 & -2 & 0 \\
 					0 &  0 & 1
 				\end{pmatrix}.
 			\end{align*}
 
-			\(J_x, J_y, J_z\) are regular spin operators, and \(Q\) is a quadratic operator, proportional to \(Q_{zz}\) as defined by Hamley et al \cite{hamley_spin-nematic_2012}, and \(Q_0\) as defined by Di et al \cite{di_dipolequadrupole_2010}.
+			The matrices \(J_x, J_y, J_z\) are regular spin operators, and \(Q\) is a quadrupole operator. Note that \(Q\) is proportional to \(Q_{zz}\) as defined by Hamley et al \cite{hamley_spin-nematic_2012}, and \(Q_0\) as defined by Di et al \cite{di_dipolequadrupole_2010}.
 
 		\subsubsection*{Parallelisation}
-			Given that \(\psi(t)\) is a unit vector, it is possible to write \(\psi(t)\) in terms of a unitary transformation \(U(t, t_0)\) of the state \(\psi(t_0)\), for any time \(t_0\). If the system is solved this way, using a geometric method, we can guarantee that \(\psi(t)\) will always be a unit vector, which is not true with solvers in general.
+			Given that \(\psi(t)\) is a unit vector, it is possible to write \(\psi(t)\) in terms of a unitary transformation \(U(t, t_0)\) of the state \(\psi(t_0)\), for any time \(t_0\). In other words, for any \(t_0,t \in \mathbb{R}\), there is a unitary transformation \(U(t, t_0)\) such that
 			
 			\begin{align*}
-				\psi(t) &= U(t, t_0)\psi(t_0)
+				\psi(t) &= U(t, t_0)\psi(t_0).
 			\end{align*}
 			
 			This means that a time series for the state of the system can be evaluated by evaluating the time evolution operator between each of the sample times.
