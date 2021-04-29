@@ -26,7 +26,7 @@ Please submit the completed paper to: editor.jors@ubiquitypress.com
 \vspace{0.5cm}
 
 \section*{Title}
-spinsim: a GPU optimised solver of spin one and half quantum systems
+spinsim: a GPU optimised solver of spin half and spin one quantum systems
 
 \section*{Paper Authors}
 1. Tritt, Alex;\\
@@ -53,36 +53,35 @@ spinsim: a GPU optimised solver of spin one and half quantum systems
 	Original conception of released version of algorithm.
 
 \section*{Abstract}
-	\emph{spinsim} is a python package that simulates spin half and spin one quantum mechanical systems following a time dependent Shroedinger equation. It makes use of the \emph{numba.cuda} llvm compiler \cite{lam_numba_2015}, and other optimisations, to allow for fast and accurate evaluation on \emph{Nvidia Cuda} \cite{nickolls_scalable_2008} compatible systems using GPU parallelisation. \emph{spinsim} is available for install on \emph{PyPI}, and the source code is available on \emph{github}. The initial use case for the package will be to simulate quantum sensing based Bose Einstein condensate (BEC) experiments for the Monash University School of Physics and Astronomy spinor BEC lab, but will be useful in simulating any range of spin one or half quantum systems with involved time dependent Hamiltonians in fields of nuclear magnetic resonance (NMR), nuclear quadrupole resonance (NQR) and magnetic resonance imaging (MRI) experiments and quantum sensing, and with the spin one systems of nitrogen vacancy centres (NVCs) and BECs.
+	\texttt{spinsim} is a \emph{python} package that simulates spin half and spin one quantum mechanical systems following a time dependent Shroedinger equation. It makes use of \texttt{numba.cuda} \cite{lam_numba_2015}, which is an \emph{LLVM} (Low Level Virtual Machine) \cite{lattner_llvm_2004} compiler, and other optimisations, to allow for fast and accurate evaluation on \emph{Nvidia Cuda} \cite{nickolls_scalable_2008} compatible systems using GPU parallelisation. \texttt{spinsim} is available for installation on \emph{PyPI}, and the source code is available on \emph{github}. The initial use case for the package will be to simulate quantum sensing-based Bose Einstein condensate (BEC) experiments for the Monash University School of Physics and Astronomy spinor BEC lab, but we anticipate it will be useful in simulating any range of spin half or spin one quantum systems with time dependent Hamiltonians that cannot be solved analytically. These appear in the fields of nuclear magnetic resonance (NMR), nuclear quadrupole resonance (NQR) and magnetic resonance imaging (MRI) experiments and quantum sensing, and with the spin one systems of nitrogen vacancy centres (NVCs) and BECs.
 
 \section*{Keywords}
-Time dependent Schroedinger equation; Spin one; Spin half; Integrator; GPU; Solver; python; numba;\\
-
-\textcolor{blue}{keyword 1; keyword 2; etc. \\
-Keywords should make it easy to identify who and what the software will be useful for.}
+Time dependent Schroedinger equation; Spin one; Spin half; Integrator; GPU; Solver; python; numba;
 
 \section*{Introduction}
 \subsection*{Motivation}
-	Ultracold atoms have proven their effectiveness in state of the art technologies in quantum metrology \cite{huang_quantum_2014}, the use of quantum mechanics to make precise measurements of small signals. Design of such measurement protocols requires many steps of verification, including simulation. This is especially important, since running real experiments can be expensive and time consuming, and thus it is more practical to debug such protocols quickly and cheaply on a computer. In general, any design of experiments using spin systems could benefit from a fast, accurate method of simulation.\\
+	Ultracold rubidium atoms have proven their effectiveness in state of the art technologies in quantum sensing \cite{degen_quantum_2017}, the use of quantum mechanics to make precise measurements of small signals. The rotation of these atoms can be modelled as quantum spin systems, which is the quantum mechanical model for objects with angular momentum. The simplest spin system, spin half (also referred to as a qubit), is quantised into just two quantum spin levels, and this describes the motion of some fundamental particles such as electrons. However, systems more practical for sensing, such as ultracold rubidium atoms, are more accurately described as a spin one quantum system (also referred to as a quitrit), which is quantised into three quantum spin levels.
+	
+	The design of sensing protocols requires many steps of verification, including simulation. This is especially important, since running real experiments can be expensive and time consuming, and thus it is more practical to debug such protocols quickly and cheaply on a computer. In general, any design of experiments using spin systems could benefit from a fast, accurate method of simulation.
 
-	In the past, the spinor Bose Einstein condensate (spinor BEC) lab at Monash University used an in-house, cython based script \emph{AtomicPy} \cite{morris_qcmonkatomicpy_2018}, which this package is originally based off, and standard differential equation solvers (such as \emph{Mathematica}'s function \emph{NDSolve}) to solve the Schroedinger equation for these spin one systems, which are sometimes approximated to spin half for a faster execution time. However, these methods are not completely optimised for our use case, and therefore come with some issues.\\
+	In the past, the spinor Bose Einstein condensate (spinor BEC) lab at Monash University used an in-house, \emph{cython} based script \texttt{AtomicPy} \cite{morris_qcmonkatomicpy_2018}, on which this package is based, and standard differential equation solvers (such as \emph{Mathematica}'s function \texttt{NDSolve}) to solve the Schroedinger equation for quantum sensing spin systems. These spin one systems  are sometimes approximated to spin half for a faster execution time, at the cost of modelling all effects of the system. However, these methods are not completely optimised for our use case, and therefore come with some issues.
 
-	First of all, while the execution time for these solvers is acceptable for running a small number of experiments, for certain experiments involving large arrays of independent atom clouds (which require thousands of simulations to be run), this time accumulates to the order of many hours.\\
+	First, while the execution time for these solvers is acceptable for running a small number of experiments, for certain experiments involving large arrays of independent atom clouds (which require many thousands of simulations to be run), this time accumulates to the order of many hours.
 
-	Secondly, the Schroedinger equation has the geometric property of being norm persevering. In other words, the time evolution operator for a system between two points in time must be unitary. This is important, because all quantum states live on the boundary of a ball of length one in their Hilbert space. For many numerical methods like those in the Runge Kutta family, the approximations used might not be norm preserving, and the evaluated quantum state may well diverge to infinite norm, or converge to zero if run for too many iterations.\\
+	Second, the Schroedinger equation has the geometric property of being norm persevering. In other words, the time evolution operator for a system between two points in time must be unitary. As such, numerical solutions to the Schroedinger equation should also preserve this property. For many numerical methods like those in the Runge Kutta family, the approximations used might not be norm preserving, and the evaluated quantum state may diverge towards an infinite norm, or converge to zero if run for many iterations.
 
-	Thirdly, our system (and similar spin systems) can be very oscillatory. In standard conditions for our application, the expected spin projection of a system can rotate in space (alternatively viewed as a point rotating around an abstract object known as a Bloch sphere) at a rate of 700kHz. Standard integration methods require very small time steps in order to accurately depict these oscillations. We found that the integration method used by AtomicPy has an accuracy of only order \(10^{-2}\) when the time step is set to the small value of 10ns.
+	Third, our system (and similar spin systems) can be very oscillatory. In standard conditions for our application, the expected spin projection of a system that we want to solve for can rotate in physical space (alternatively viewed as a point rotating around an abstract object known as a \emph{Bloch sphere}) at a rate of 700kHz. Standard integration methods require very small time steps in order to accurately depict these oscillations. For instance, we found that the integration method used by \emph{AtomicPy} has an accuracy of only order \(10^{-2}\) when the integration time step is set to the small value of 10ns.
 
 \section*{Implementation and architecture}
 	\subsection*{Mathematical methods}
-		\subsubsection*{Parallelisation}
-			In general, \emph{spinsim} solves the Schroedinger equation,
+		\subsubsection*{Background}
+			In general, \texttt{spinsim} solves the Schroedinger equation,
 
 			\begin{align*}
 				\frac{\mathrm{d}}{\mathrm{d}t}\psi(t) &= -iH(t)\psi(t),
 			\end{align*}
 
-			with \(i^2 = -1\), the state, \(\psi(t)\) a time dependent, 3 (2) dimensional, unit complex vector, and \(H(t)\) a time dependent 3 by 3 (2 by 2) complex matrix for spin one (spin half) systems. However, in \emph{spinsim}, the Hamiltonian \(H(t)\) is instead defined by its vector representation in Lie Algebra. For example, when set to spin half mode, the \emph{spinsim} package solves time dependent Schroedinger Equations of the form
+			where \(i^2 = -1\), the state \(\psi(t) \in \mathbb{C}^N\) a time dependent, \(N\) dimensional, unit complex vector, and the Hamiltonian \(H(t) \in \mathbb{C}^{N \times N}\) is a time dependent \(N \times N\) complex Hermitian matrix. Here \(N\) is the number spin levels in the quantum system, so spin half is the \(N = 2\) case, and spin one refers to the \(N = 3\) case. Rather than being represented by standard coodintaes in \(\mathbb{C}^{N \times N}\), in \texttt{spinsim} the Hamiltonian \(H(t)\) is instead represented with respect to a choice of basis for the corresponding Lie Algebra, \(\mathfrak{su}(N)\). For example, when set to spin half mode, the \texttt{spinsim} package solves the time dependent Schroedinger equations of the form
 
 			\begin{align*}
 				\frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (f_x(t) J_x + f_y(t) J_y + f_z(t) J_z) \psi(t),
@@ -99,15 +98,15 @@ Keywords should make it easy to identify who and what the software will be usefu
 					0 & -i \\
 					i &  0
 				\end{pmatrix},
-				&J_z &= \frac12\begin{pmatrix}
+				&\textrm{and }J_z &= \frac12\begin{pmatrix}
 					1 &  0 \\
 					0 & -1
 				\end{pmatrix}.
 			\end{align*}
 
-			The source of the system is the collection of energy functions \(f_x(t), f_y(t), f_z(t)\), with \(t\) in units of s and \(f\) in units of Hz that control the dynamics of the system. The user must define a function that returns a sample of these source functions when a sampling time is input. In physical terms, these functions would represent the \(x,y,z\) components of a magnetic field applied to an atom being simulated, for example.\\
+			The energy source \(f\) that represents the time dependent Hamiltonian \(H(t)\), is the collection of energy functions \(f_x(t), f_y(t), f_z(t)\), with \(t\) in units of s and \(f\) in units of Hz that control the dynamics of the system. The user must define a method that returns a sample of these source functions when a sampling time is input. In physical terms, these functions could represent the \(x,y,z\) components of a magnetic field applied to a magnetically sensitive.
 
-			Similarly, when \emph{spinsim} is set to spin one mode, it can solve Schroedinger equations of the form
+			Similarly, when \texttt{spinsim} is set to spin one mode, it can solve Schroedinger equations of the form
 
 			\begin{align*}
 				\frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (f_x(t) J_x + f_y(t) J_y + f_z(t) J_z + f_q(t) Q) \psi(t).
@@ -138,8 +137,9 @@ Keywords should make it easy to identify who and what the software will be usefu
 				\end{pmatrix}.
 			\end{align*}
 
-			\(J_x, J_y, J_z\) are regular spin operators, and \(Q\) is a quadratic operator, proportional to \(Q_{zz}\) as defined by Hamley et al \cite{hamley_spin-nematic_2012}, and \(Q_0\) as defined by Di et al \cite{di_dipolequadrupole_2010}.\\
+			\(J_x, J_y, J_z\) are regular spin operators, and \(Q\) is a quadratic operator, proportional to \(Q_{zz}\) as defined by Hamley et al \cite{hamley_spin-nematic_2012}, and \(Q_0\) as defined by Di et al \cite{di_dipolequadrupole_2010}.
 
+		\subsubsection*{Parallelisation}
 			Given that \(\psi(t)\) is a unit vector, it is possible to write \(\psi(t)\) in terms of a unitary transformation \(U(t, t_0)\) of the state \(\psi(t_0)\), for any time \(t_0\). If the system is solved this way, using a geometric method, we can guarantee that \(\psi(t)\) will always be a unit vector, which is not true with solvers in general.
 			
 			\begin{align*}
@@ -156,9 +156,9 @@ Keywords should make it easy to identify who and what the software will be usefu
 			
 			with \(\mathrm{D}t\) the time step of the time series.
 
-			Also importantly, while each of the \(\psi_k\) must be evaluated sequentially, the value of the \(U_k\) is independent of the value of any \(\psi_{k_0}\), or any other \(U_{k_0}\). This means that the time evolution operators \(U_k\) can all be calculated in parallel, and it allows \emph{spinsim} to use GPU parallelisation on the level of time sample points, so a speed up is achieved even if just a single simulation is run.\\
+			Also importantly, while each of the \(\psi_k\) must be evaluated sequentially, the value of the \(U_k\) is independent of the value of any \(\psi_{k_0}\), or any other \(U_{k_0}\). This means that the time evolution operators \(U_k\) can all be calculated in parallel, and it allows \texttt{spinsim} to use GPU parallelisation on the level of time sample points, so a speed up is achieved even if just a single simulation is run.
 
-			In summary, \emph{spinsim} splits the time evolution of the full simulation into time evolution \(U_k\) within small time intervals \([t_{k - 1}, t_{k}]\), which are each calculated massively in parallel on a GPU. When all the \(U_k\) are calculated CPU then multiplies the \(U_k\) together (a comparatively less demanding job than calculating them) to determine the \(\psi_k\).
+			In summary, \texttt{spinsim} splits the time evolution of the full simulation into time evolution \(U_k\) within small time intervals \([t_{k - 1}, t_{k}]\), which are each calculated massively in parallel on a GPU. When all the \(U_k\) are calculated CPU then multiplies the \(U_k\) together (a comparatively less demanding job than calculating them) to determine the \(\psi_k\).
 
 		\subsubsection*{Rotating frame}
 			If the rotating frame option is selected, the \(U_k\) are first calculated within a local rotating frame as \(U^r_k\), which shrinks the size of the terms used in the calculation, increasing accuracy. The midpoint value \(f_r = f_z(t_k + \frac12\mathrm{D}t)\) is sampled to be removed from the source. This transforms the source functions as follows,
@@ -185,7 +185,7 @@ Keywords should make it easy to identify who and what the software will be usefu
 			\end{align*}
 			
 		\subsubsection*{Magnus based integration method}
-			The integration method used in \emph{spinsim} is the CF4 method from Auer et al \cite{auer_magnus_2018}. Each of the \(U_k\) are split into products of time evolution operators between times separated by a smaller timestep,
+			The integration method used in \texttt{spinsim} is the CF4 method from Auer et al \cite{auer_magnus_2018}. Each of the \(U_k\) are split into products of time evolution operators between times separated by a smaller timestep,
 			
 			\begin{align*}
 				U(t_k, t_{k-1}) &= U(t_k, t_k - \mathrm{d}t) \cdots U(t_{k-1} + 2\mathrm{d}t, t_{k-1} + \mathrm{d}t) U(t_{k-1} + \mathrm{d}t, t_{k-1})\\
@@ -220,30 +220,30 @@ Keywords should make it easy to identify who and what the software will be usefu
 				g &= (g_x, g_y, g_z, g_q)
 			\end{align*}
 			
-			For spin half, the default exponentiator is in an analytic form. For spin one, an exponentiator based on the Lie Trotter product formula \cite{moler_nineteen_2003} is used. Importantly, these two methods both use analytic forms of exponentials to construct the result, meaning that all calculated time evolution operators are unitary.\\
+			For spin half, the default exponentiator is in an analytic form. For spin one, an exponentiator based on the Lie Trotter product formula \cite{moler_nineteen_2003} is used. Importantly, these two methods both use analytic forms of exponentials to construct the result, meaning that all calculated time evolution operators are unitary.
 
 			This also means that the package cannot solve arbitrary spin one quantum systems, as that would require the ability to exponentiate a point in the full, 8 dimensional Lie algebra of \(\mathfrak{su}(3)\), rather than just the four dimensional subspace spanned by the subalgebra \(\mathfrak{su}(2)\) spanned by \(\{J_x, J_y, J_z\}\), and the single quadratic operator \(Q\). Including the full algebra could be possible as a feature update if there is demand for it, though just including this subspace is sufficient for our application, and many others.
 
 	\subsection*{Software architecture}
 		\subsubsection*{Integrator architecture}
-			The integrator in the \emph{spinsim} package calls a \emph{numba.cuda.jit()}ed kernel to be run on a \emph{Cuda} capable \emph{Nvidia} GPU in parallel, with a different thread being allocated to each of the \(U_k\). This returns when each of the \(U_k\) have been evaluated.\\
+			The integrator in the \texttt{spinsim} package calls a \texttt{numba.cuda.jit()}ed kernel to be run on a \emph{Cuda} capable \emph{Nvidia} GPU in parallel, with a different thread being allocated to each of the \(U_k\). This returns when each of the \(U_k\) have been evaluated.
 			
-			The thread starts by calculating \(t_k\) and, if the rotating frame is being used, \(f_r\). The latter is done by sampling a (\emph{numba.cuda.jit()}ed version of a) user provided python function \(f\) describing how to sample the source Hamiltonian. The code then loops over each fine time step \(\mathrm{d}t\) to calculate the fine time evolution operators \(u^k_l\).\\
+			The thread starts by calculating \(t_k\) and, if the rotating frame is being used, \(f_r\). The latter is done by sampling a (\texttt{numba.cuda.jit()}ed version of a) user provided \emph{python} function \(f\) describing how to sample the source Hamiltonian. The code then loops over each fine time step \(\mathrm{d}t\) to calculate the fine time evolution operators \(u^k_l\).
 			
-			Within the loop, the integrator enters a device function (ie a GPU subroutine, which is inline for speed) to sample \(f(t)\), as well as calculate \(e^{-i 2 \pi f_r t}\), at the sample times needed for the integration method. After this, it enters a second device function, which makes a rotating wave transformation as needed in a third device function, before calculating \(g\) values, and finally taking the matrix exponentiation in a fourth device function. \(u^k_l\) is premultiplied to \(U^r_k\) (which is initialised to \(1\)), and the loop continues.\\
+			Within the loop, the integrator enters a device function (ie a GPU subroutine, which is inline for speed) to sample \(f(t)\), as well as calculate \(e^{-i 2 \pi f_r t}\), at the sample times needed for the integration method. After this, it enters a second device function, which makes a rotating wave transformation as needed in a third device function, before calculating \(g\) values, and finally taking the matrix exponentiation in a fourth device function. \(u^k_l\) is premultiplied to \(U^r_k\) (which is initialised to \(1\)), and the loop continues.
 			
-			When the loop has finished, if the rotating frame is being used, \(U^r_k\) is transformed to \(U_k\) as above, and this is returned. Once all threads have executed, the state \(\psi_k\) is calculated in a (CPU) \emph{numba.jit()}ed function from the \(U_k\) and an initial condition \(\psi_{\mathrm{init}}\).
+			When the loop has finished, if the rotating frame is being used, \(U^r_k\) is transformed to \(U_k\) as above, and this is returned. Once all threads have executed, the state \(\psi_k\) is calculated in a (CPU) \texttt{numba.jit()}ed function from the \(U_k\) and an initial condition \(\psi_{\mathrm{init}}\).
 	
 	
 		\subsubsection*{Compilation of integrator}
-			The \emph{spinsim} integrator is constructed and compiled just in time, using \emph{numba.cuda.jit()}. The particular device functions used are not predetermined, but are instead chosen based off user input to decide a closure. This structure has multiple advantages. Firstly, the source function \(f\) is provided by the user as a plain python function (that must be \emph{numba.cuda.jit()} compatible). This allows users to define \(f\) in a way that compiles and executes fast, does not put many restrictions on the form of the function, and returns the accurate results of analytic functions (compared to the errors seen in interpolation). Compiling the simulator also allows the user to set metaparameters, and choose the features they want to use, in a way that does not require experience with the \emph{numba.cuda} library. This was especially useful for running benchmarks comparing old integration methods to the new ones, like CF4. The default settings should be optimal for most users, although tuning the values of \emph{Cuda} metaparameters \emph{max\_registers} and \emph{threads\_per\_block} could improve performance for GPUs with a differing number of registers and \emph{Cuda} cores to the mobile GTX1070 mainly used in testing here. Finally, just in time compilation also allows the user to select a target device other than \emph{Cuda} for compilation, so the simulator can run, using the same algorithm, on a multicore CPU in parallel instead of a GPU, if the user so chooses.\\
+			The \texttt{spinsim} integrator is constructed and compiled just in time, using \texttt{numba.cuda.jit()}. The particular device functions used are not predetermined, but are instead chosen based off user input to decide a closure. This structure has multiple advantages. Firstly, the source function \(f\) is provided by the user as a plain python function (that must be \texttt{numba.cuda.jit()} compatible). This allows users to define \(f\) in a way that compiles and executes fast, does not put many restrictions on the form of the function, and returns the accurate results of analytic functions (compared to the errors seen in interpolation). Compiling the simulator also allows the user to set metaparameters, and choose the features they want to use, in a way that does not require experience with the \texttt{numba.cuda} library. This was especially useful for running benchmarks comparing old integration methods to the new ones, like CF4. The default settings should be optimal for most users, although tuning the values of \emph{Cuda} metaparameters \texttt{max\_registers} and \texttt{threads\_per\_block} could improve performance for GPUs with a differing number of registers and \emph{Cuda} cores to the mobile GTX1070 mainly used in testing here. Finally, just in time compilation also allows the user to select a target device other than \emph{Cuda} for compilation, so the simulator can run, using the same algorithm, on a multicore CPU in parallel instead of a GPU, if the user so chooses.
 			
-			This functionality is interfaced through an object of class \emph{spinsim.Simulator}. The \emph{Cuda} kernel is defined as per the user’s instructions on construction of the instance, and it is used by calling the method \emph{spinsim.Simulator.evaluate()}, which returns a results object including the time, state, time evolution operator, and expected spin projection (that is, Bloch vector. Note that the expected spin projection is calculated as a lazy parameter if needed, rather than returned by the simulator object).
+			This functionality is interfaced through an object of class \texttt{spinsim.Simulator}. The \emph{Cuda} kernel is defined as per the user’s instructions on construction of the instance, and it is used by calling the method \texttt{spinsim.Simulator.evaluate()}, which returns a results object including the time, state, time evolution operator, and expected spin projection (that is, Bloch vector. Note that the expected spin projection is calculated as a lazy parameter if needed, rather than returned by the simulator object).
 
 \section*{Quality control}
 	\subsection*{Benchmarks}
 		\subsubsection*{Speed}
-			Benchmarks were performed using \emph{sense.sim.benchmark}, by comparing evaluation speed of typical spin one metrology experiments on different devices. This is shown in Figure \ref{fig:benchmark_device_aggregate}. The integration code was compiled by \emph{numba} for single core CPUs, multicore CPUs, and \emph{Nvidia Cuda}, and run on different devices. These devices are,
+			Benchmarks were performed using \texttt{sense.sim.benchmark}, by comparing evaluation speed of typical spin one sensing experiments on different devices. This is shown in Figure \ref{fig:benchmark_device_aggregate}. The integration code was compiled by \texttt{numba} for single core CPUs, multicore CPUs, and \emph{Nvidia Cuda}, and run on different devices. These devices are,
 			\begin{itemize}
 				\item {} 
 				Intel Core i7-8750H, a 6 core laptop processor released in 2018. Run with 16GiB of RAM. Air cooled (laptop fan). Base clock speed of 2.2GHz.
@@ -266,50 +266,54 @@ Keywords should make it easy to identify who and what the software will be usefu
 
 			\begin{figure}[h!]
 				\includegraphics[scale=0.9]{benchmark_device_aggregate_publication.pdf}
-				\caption{Evaluation speed of a typical spin one metrology experiment. Fine time step is 100ns, as determined to be ideal by the accuracy experiments. Experiments run for a duration of 100ms. Evaluation time is determined by an average of 100 similar experiments for each device.}
+				\caption{Evaluation speed of a typical spin one sensing experiment. Fine time step is 100ns, as determined to be ideal by the accuracy experiments. Experiments run for a duration of 100ms. Evaluation time is determined by an average of 100 similar experiments for each device.}
 				\label{fig:benchmark_device_aggregate}
 			\end{figure}
 
 			This benchmark shows the benefit to using parallelisation when solving this problem. Moving from a 6 core processor to a 12 core processor doubles the execution speed. Moving from a single core processor to a GPU increases performance by well over an order of magnitude. As an aside, liquid cooling allows the 8 core processor to increase its boost clock and outperform the 12 core processor.
 
 		\subsubsection*{Accuracy}
-			Benchmarks were performed using \emph{neural-sense.sim.benchmark} (where \emph{neural-sense} \cite{alexander-tritt-monash_alexander-tritt-monashneural-sense_2020} is the quantum sensing package that \emph{spinsim} was written for), by comparing state evaluations of many different typical metrology experiments and finding the mean error introduced when the fine (integration) time step is increased.\\
+			Benchmarks were performed using \texttt{neural-sense.sim.benchmark} (where \texttt{neural-sense} \cite{alexander-tritt-monash_alexander-tritt-monashneural-sense_2020} is the quantum sensing package that \texttt{spinsim} was written for), by comparing state evaluations of many different typical sensing experiments and finding the mean error introduced when the fine (integration) time step is increased.
 
 			\begin{figure}[h!]
 				\includegraphics[scale=0.9]{benchmark_comparison_spin_one_publication.pdf}
-				\caption{Fine time step benchmark for spin one systems. CF4 is the Magnus commutator free integrator, HS is the two sample exponential integrator used in \emph{AtomicPy}, MP is a single sample exponential integrator, RF is use of the rotating frame, and LF is lab frame (no use of the rotating frame). HS and MP results are drawn on top of each other due to their similarities.}
+				\caption{Fine time step benchmark for spin one systems. CF4 is the Magnus commutator free integrator, HS is the two sample exponential integrator used in \texttt{AtomicPy}, MP is a single sample exponential integrator, RF is use of the rotating frame, and LF is lab frame (no use of the rotating frame). HS and MP results are drawn on top of each other due to their similarities.}
 				\label{fig:benchmark_comparison_spin_one}
 			\end{figure}
 
-			Figure \ref{fig:benchmark_comparison_spin_one} shows the performance of \emph{spinsim} when running in spin one mode. This shows that both using the Magnus based CF4 method and moving into a rotating frame give significant increases to accuracy. The HS (half step) method in the lab frame, with a time step of 10ns was the method used by \emph{AtomicPy}, the previous code used by the group for simulating spin systems. Compared to this, the best performing \emph{spinsim} method is 5 orders of magnitude more accurate, while executing in a time 2 orders of magnitude faster.\\
+			Figure \ref{fig:benchmark_comparison_spin_one} shows the performance of \texttt{spinsim} when running in spin one mode. This shows that both using the Magnus based CF4 method and moving into a rotating frame give significant increases to accuracy. The HS (half step) method in the lab frame, with a time step of 10ns was the method used by \texttt{AtomicPy}, the previous code used by the group for simulating spin systems. Compared to this, the best performing \texttt{spinsim} method is 5 orders of magnitude more accurate, while executing in a time 2 orders of magnitude faster.
 
 			\begin{figure}[h!]
 				\includegraphics[scale=0.9]{benchmark_comparison_spin_half_lt_publication.pdf}
-				\caption{Fine time step benchmark for spin half systems, using the Lie Trotter based exponentiator. CF4 is the Magnus commutator free integrator, HS is the two sample exponential integrator used in \emph{AtomicPy}, MP is a single sample exponential integrator, RF is use of the rotating frame, and LF is lab frame (no use of the rotating frame). HS and MP results are drawn on top of each other due to their similarities.}
+				\caption{Fine time step benchmark for spin half systems, using the Lie Trotter based exponentiator. CF4 is the Magnus commutator free integrator, HS is the two sample exponential integrator used in \texttt{AtomicPy}, MP is a single sample exponential integrator, RF is use of the rotating frame, and LF is lab frame (no use of the rotating frame). HS and MP results are drawn on top of each other due to their similarities.}
 				\label{fig:benchmark_comparison_spin_half_lt}
 			\end{figure}
 
-			From Figure \ref{fig:benchmark_comparison_spin_half_lt}, one gets essentially the same accuracy for each method when working in spin half mode compared to spin one, if all else is kept constant.\\
+			From Figure \ref{fig:benchmark_comparison_spin_half_lt}, one gets essentially the same accuracy for each method when working in spin half mode compared to spin one, if all else is kept constant.
 
 			\begin{figure}[h!]
 				\includegraphics[scale=0.9]{benchmark_comparison_spin_half_a_publication.pdf}
-				\caption{Fine time step benchmark for spin half systems, using the analytic based exponentiator. CF4 is the Magnus commutator free integrator, HS is the two sample exponential integrator used in \emph{AtomicPy}, MP is a single sample exponential integrator, RF is use of the rotating frame, and LF is lab frame (no use of the rotating frame). HS and MP results are drawn on top of each other due to their similarities.}
+				\caption{Fine time step benchmark for spin half systems, using the analytic based exponentiator. CF4 is the Magnus commutator free integrator, HS is the two sample exponential integrator used in \texttt{AtomicPy}, MP is a single sample exponential integrator, RF is use of the rotating frame, and LF is lab frame (no use of the rotating frame). HS and MP results are drawn on top of each other due to their similarities.}
 				\label{fig:benchmark_comparison_spin_half_a}
 			\end{figure}
 
 			Figure \ref{fig:benchmark_comparison_spin_half_a} shows that the Lie Trotter based exponentiator does limit the maximum accuracy obtainable, and for spin half systems, one can increase accuracy further (and decrease execution time) by using an analytic based exponentiator.
 
 		\subsubsection*{Comparison to alternatives}
-			As mentioned before, compared to our previous code, \emph{AtomicPy}, the best performing \emph{spinsim} method is 5 orders of magnitude more accurate, while executing in a time 2 orders of magnitude faster. We had planned to benchmark against some popular generic solvers. One such solver was \emph{qutip.sesolve()}, a solver in the popular quantum mechanics python library, \emph{QuTip} \cite{johansson_qutip_2013}. However, due to a known bug with the library’s dependencies, this was not installable on Windows 10, the operating system being used for testing, and so benchmarks for it could not be run. We also planned to benchmark accuracy against the generic solver \emph{scipy.integrate.ivp\_solve()} in the python library \emph{SciPy} \cite{virtanen_scipy_2020}. However, using the same \emph{get\_field} function as in the spin one benchmarks used for the \emph{spinsim}, simulating with a fine time step of 500ns (the largest used during the \emph{spinsim} benchmarks), we found that a single simulation ran in 153s, which is over three orders of magnitude slower than the most accurate \emph{spinsim} simulations. This means that a generous projection for the time it would take to run the same benchmarks that \emph{spinsim} runs in 11 minutes, using \emph{scipy} would be over six days; for an integration package not designed for this problem (and would therefore likely be less accurate).
+			As mentioned before, compared to our previous code, \texttt{AtomicPy}, the best performing \texttt{spinsim} method is 5 orders of magnitude more accurate, while executing in a time 2 orders of magnitude faster.
+
+			Another solver used by the lab group is \emph{Mathematica}'s \texttt{NDSolve}.
+
+			We had planned to benchmark against some other popular generic solvers. One such solver was \texttt{qutip.sesolve()}, a solver in the popular quantum mechanics \emph{python} library, \texttt{QuTip} \cite{johansson_qutip_2013}. However, due to a known bug with the library’s dependencies, this was not installable on Windows 10, the operating system being used for testing, and so benchmarks for it could not be run. We also planned to benchmark accuracy against the generic solver \texttt{scipy.integrate.ivp\_solve()} in the \emph{python} library \texttt{SciPy} \cite{virtanen_scipy_2020}. However, using the same \texttt{get\_field} function as in the spin one benchmarks used for the \texttt{spinsim}, simulating with a fine time step of 500ns (the largest used during the \texttt{spinsim} benchmarks), we found that a single simulation ran in 153s, which is over three orders of magnitude slower than the most accurate \texttt{spinsim} simulations. This means that a generous projection for the time it would take to run the same benchmarks that \texttt{spinsim} runs in 11 minutes, using \texttt{scipy} would be over six days; for an integration package not designed for this problem (and would therefore likely be less accurate).
 
 	\subsection*{Testing}
-		The simulator as a whole has been functionally tested against well known analytic approximations of the behaviour spin systems. This was done for every combination of integrator settings possible when compiling the integrator. The system was benchmarked in terms of accuracy vs fine time step, again, using every possible combination of integrator settings. This confirms that no integrator diverges away from the limiting solution when the time step is decreased in magnitude. The Lie Trotter matrix exponentiator was tested separately from the full system, as well as benchmarked separately.\\
+		The simulator as a whole has been functionally tested against well known analytic approximations of the behaviour spin systems. This was done for every combination of integrator settings possible when compiling the integrator. The system was benchmarked in terms of accuracy vs fine time step, again, using every possible combination of integrator settings. This confirms that no integrator diverges away from the limiting solution when the time step is decreased in magnitude. The Lie Trotter matrix exponentiator was tested separately from the full system, as well as benchmarked separately.
 
-		These tests and benchmarks were run as part of the \emph{neural\_sense} package. The simulator has also been used as part of the measurement protocol being developed there, and it has been tested as part of those algorithms as well.\\
+		These tests and benchmarks were run as part of the \texttt{neural\_sense} package. The simulator has also been used as part of the measurement protocol being developed there, and it has been tested as part of those algorithms as well.
 
-		The kernel execution was profiled thoroughly, and changes were made to optimise VRAM and register usage and transfer. This was done specifically for the hardware of an Nvidia GTX1070, so one may get some performance increases by changing some GPU specific metaparameters when instantiating the \emph{spinsim.Simulator} object.\\
+		The kernel execution was profiled thoroughly, and changes were made to optimise VRAM and register usage and transfer. This was done specifically for the hardware of an Nvidia GTX1070, so one may get some performance increases by changing some GPU specific metaparameters when instantiating the \texttt{spinsim.Simulator} object.
 
-		A good way to confirm that \emph{spinsim} is functioning properly after an installation is to run the tutorial code provided and compare the outputs. Otherwise, one can run the benchmarks and simulation protocols in \emph{neural\_sense.sim.benchmark}.
+		A good way to confirm that \texttt{spinsim} is functioning properly after an installation is to run the tutorial code provided and compare the outputs. Otherwise, one can run the benchmarks and simulation protocols in \texttt{neural\_sense.sim.benchmark}.
 
 \section*{(2) Availability}
 \vspace{0.5cm}
@@ -377,65 +381,27 @@ neuralsense (for benchmark code)
 
 English.
 
-\section*{Software location:}
-
-{\bf Archive} \textcolor{blue}{(e.g. institutional repository, general repository) (required – please see instructions on journal website for depositing archive copy of software in a suitable repository)} 
-
-\begin{description}[noitemsep,topsep=0pt]
-	\item[Name:] \textcolor{blue}{The name of the archive.}
-	\item[Persistent identifier:] \textcolor{blue}{e.g. DOI, handle, PURL, etc.}
-	\item[Licence:] \textcolor{blue}{Open license under which the software is licensed.}
-	\item[Publisher:]  \textcolor{blue}{Name of the person who deposited the software.}
-	\item[Version published:] \textcolor{blue}{The version number of the software archived.}
-	\item[Date published:] \textcolor{blue}{dd/mm/yy}
-\end{description}
-
-{\bf Code repository} \textcolor{blue}{(e.g. SourceForge, GitHub etc.) (required)}
-
-\begin{description}[noitemsep,topsep=0pt]
-	\item[Name:] \textcolor{blue}{The name of the archive.}
-	\item[Persistent identifier:] \textcolor{blue}{e.g. DOI, handle, PURL, etc.}
-	\item[Licence:] \textcolor{blue}{Open license under which the software is licensed.}
-	\item[Date published:] \textcolor{blue}{dd/mm/yy}
-\end{description}
-
-{\bf Emulation environment} \textcolor{blue}{(if appropriate)}
-
-\begin{description}[noitemsep,topsep=0pt]
-	\item[Name:] \textcolor{blue}{The name of the archive.}
-	\item[Persistent identifier:] \textcolor{blue}{e.g. DOI, handle, PURL, etc.}
-	\item[Licence:] \textcolor{blue}{Open license under which the software is licensed.}
-	\item[Date published:] \textcolor{blue}{dd/mm/yy}
-\end{description}
-
-\section*{Language}
-
-\textcolor{blue}{Language of repository, software and supporting files.}
-
 \section*{(3) Reuse potential}
 
 	\subsection*{Use potential and limitations}
-		\emph{spinsim} will be useful for any research group needing quick, accurate, and / or large numbers of simulations involving spin half or spin one systems. This is immediately relevant to developing new quantum sensing protocols with spin one and spin half systems. The package will be used in the context of Bose Einstein Condensate (BEC) magnetic sensing protocol design by our lab, both within and outside the project it was conceived for.\\
+		\texttt{spinsim} will be useful for any research group needing quick, accurate, and / or large numbers of simulations involving spin half or spin one systems. This is immediately relevant to developing new quantum sensing protocols with spin half and spin one systems. The package will be used in the context of Bose Einstein Condensate (BEC) magnetic sensing protocol design by our lab, both within and outside the project it was conceived for.
 
-		This project is to be able to measure neural signals using BECs. The electrical pulses made by neurons are currently measured using electrical probes, which is intrusive and damages the cells. We instead propose to sense the small magnetic fields that these electrical currents produce. Rubidium BECs can potentially be made sensitive enough to these tiny magnetic fields that they can be measured by them. An array of BECs can theoretically be made to sample the frequency components of the magnetic signal, essentially making a Fourier transform of it, which can be transformed back. Assuming that pulses do not occur very often (the signal is sparse in the time domain), a smaller BEC array with fewer frequency samples can be used to create a compressed measurement, reconstructed with theory from the field of compressive sensing \cite{candes_introduction_2008}. \emph{spinsim} was written to simulate possible measurement protocols for this, showing the behaviour of the array of spin one atoms interacting with the magnetic fields of the neurons, control signals, and noise.\\
+		This project is to be able to measure neural signals using BECs. The electrical pulses made by neurons are currently measured using electrical probes, which is intrusive and damages the cells. We instead propose to sense the small magnetic fields that these electrical currents produce. Rubidium BECs can potentially be made sensitive enough to these tiny magnetic fields that they can be measured by them. An array of BECs can theoretically be made to sample the frequency components of the magnetic signal, essentially making a Fourier transform of it, which can be transformed back. Assuming that pulses do not occur very often (the signal is sparse in the time domain), a smaller BEC array with fewer frequency samples can be used to create a compressed measurement, reconstructed with theory from the field of compressive sensing \cite{candes_introduction_2008}. \texttt{spinsim} was written to simulate possible measurement protocols for this, showing the behaviour of the array of spin one atoms interacting with the magnetic fields of the neurons, control signals, and noise.
 
-		Another example of spin based magnetic field sensing is the use of Nitrogen Vacancy Centres (NVCs). These are spin one structures found in diamond doped with Nitrogen atoms. This leaves a vacancy in a position adjacent to the Nitrogen atom, which pairs of electrons occupy to obtain the spin one properties. Similar to BECs, NVCs can be placed and addressed in 2D arrays in order to take many samples in one measurement. A paper was only recently released covering simulation experiments of magnetic neural pulse sensing using NVCs \cite{parashar_axon_2020}, which is something that \emph{spinsim} could be useful for.\\
+		Another example of spin based magnetic field sensing is the use of Nitrogen Vacancy Centres (NVCs). These are spin one structures found in diamond doped with Nitrogen atoms. This leaves a vacancy in a position adjacent to the Nitrogen atom, which pairs of electrons occupy to obtain the spin one properties. Similar to BECs, NVCs can be placed and addressed in 2D arrays in order to take many samples in one measurement. A paper was only recently released covering simulation experiments of magnetic neural pulse sensing using NVCs \cite{parashar_axon_2020}, which is something that \texttt{spinsim} could be useful for.
 
-		\emph{spinsim} is designed to simulate small dimensional quantum systems, including large arrays of non-interacting spin systems. This means that it would not be able to integrate large arrays of entangled states or interacting particles. As a result, despite being fast at simulating qubits, it is inappropriate for the package to be used for quantum computing. In addition, \emph{spinsim} is currently designed to integrate the time evolution of pure states only. This means that it may not be adequate for use in some Nuclear Magnetic Resonance (NMR) applications where relaxation \cite{veshtort_spinevolution_2006} is important (or other kinds of simulations involving decoherence).\\
+		\texttt{spinsim} is designed to simulate small dimensional quantum systems, including large arrays of non-interacting spin systems. This means that it would not be able to integrate large arrays of entangled states or interacting particles. As a result, despite being fast at simulating qubits, it is inappropriate for the package to be used for quantum computing. In addition, \texttt{spinsim} is currently designed to integrate the time evolution of pure states only. This means that it may not be adequate for use in some Nuclear Magnetic Resonance (NMR) applications where relaxation \cite{veshtort_spinevolution_2006} is important (or other kinds of simulations involving decoherence).
 
-		With these restrictions in mind, \emph{spinsim} could be used for some simplified simulations in various areas of NMR. There are many atomic nuclei with spins of half (eg protons, Carbon 13) and, and fewer that have spins of one (eg Lithium 6, Nitrogen 14) \cite{fuller_nuclear_1976}, which, if relaxation and interactions between systems are not important for the application, \emph{spinsim} could be used to simulate for spectroscopy experiments, for example. The inclusion of a quadrupole operator means that, with the same level of simplifications, \emph{spinsim} should be able to simulate Nuclear Quadrupole Resonance (NQR) spectroscopy for spin one nuclei \cite{bain_nqr_2004}, such as Nitrogen 14, provided a suitable coordinate system is chosen. This technique measures energy level differences between levels split by electric field gradients, rather than static magnetic bias fields. Another possible use case could be for Magnetic Resonance Imaging (MRI) simulation and pulse sequence design. MRI uses measures the response of spins of an array of spin half protons to a spatially varying pulse sequence \cite{mckinnon_physics_1998}, which essentially just corresponds to many separate \emph{spinsim} simulations of spins at different positions in space. While this package offers some advantages over state of the art simulators in the field \cite{kose_fast_2019}, with its use of quantum mechanics over classical mechanics, and its absence of rotating wave approximations, its parametrised pulse sequence definitions and geometric integrator, again, the lack of interacting particles and decoherence features are likely its downfall here.
+		With these restrictions in mind, \texttt{spinsim} could be used for some simplified simulations in various areas of NMR. There are many atomic nuclei with spins of half (eg protons, Carbon 13) and, and fewer that have spins of one (eg Lithium 6, Nitrogen 14) \cite{fuller_nuclear_1976}, which, if relaxation and interactions between systems are not important for the application, \texttt{spinsim} could be used to simulate for spectroscopy experiments, for example. The inclusion of a quadrupole operator means that, with the same level of simplifications, \texttt{spinsim} should be able to simulate Nuclear Quadrupole Resonance (NQR) spectroscopy for spin one nuclei \cite{bain_nqr_2004}, such as Nitrogen 14, provided a suitable coordinate system is chosen. This technique measures energy level differences between levels split by electric field gradients, rather than static magnetic bias fields. Another possible use case could be for Magnetic Resonance Imaging (MRI) simulation and pulse sequence design. MRI uses measures the response of spins of an array of spin half protons to a spatially varying pulse sequence \cite{mckinnon_physics_1998}, which essentially just corresponds to many separate \texttt{spinsim} simulations of spins at different positions in space. While this package offers some advantages over state of the art simulators in the field \cite{kose_fast_2019}, with its use of quantum mechanics over classical mechanics, and its absence of rotating wave approximations, its parametrised pulse sequence definitions and geometric integrator, again, the lack of interacting particles and decoherence features are likely its downfall here.
 
 	\subsection*{Support}
-		Documentation for \emph{spinsim} is available on \href{https://spinsim.readthedocs.io/en/latest/}{\emph{Read the Docs}}. This documentation contains a thorough tutorial on how to use the package, and installation instructions.\\
+		Documentation for \texttt{spinsim} is available on \href{https://spinsim.readthedocs.io/en/latest/}{\emph{Read the Docs}}. This documentation contains a thorough tutorial on how to use the package, and installation instructions.
 		
-		For direct support with the \emph{spinsim} package, one can open an issue in the \emph{github} repository. One can also use this contact to suggest extensions to the package. \emph{spinsim} is planned to be maintained by the Monash University spinor BEC lab into the future.
-
-
-\textcolor{blue}{Please describe in as much detail as possible the ways in which the software could be reused by other researchers both within and outside of your field. This should include the use cases for the software, and also details of how the software might be modified or extended (including how contributors should contact you) if appropriate. Also you must include details of what support mechanisms are in place for this software (even if there is no support).}
+		For direct support with the \texttt{spinsim} package, one can open an issue in the \emph{github} repository. One can also use this contact to suggest extensions to the package. \texttt{spinsim} is planned to be maintained by the Monash University spinor BEC lab into the future.
 
 \section*{Acknowledgements}
 
-Thank you to Hamish Taylor and Travis Hartley from the Monash University School of Physics and Astronomy spinor BEC lab, who have started using \emph{spinsim} for their own projects and have given feedback of their user experience with the package.
+Thank you to Hamish Taylor and Travis Hartley from the Monash University School of Physics and Astronomy spinor BEC lab, who have started using \texttt{spinsim} for their own projects and have given feedback of their user experience with the package.
 
 \section*{Funding statement}
 
@@ -445,20 +411,8 @@ Thank you to Hamish Taylor and Travis Hartley from the Monash University School 
 
 The authors declare that they have no competing interests.
 
-\textcolor{blue}{If any of the authors have any competing interests then these must be declared. The authors’ initials should be used to denote differing competing interests. For example: “BH has minority shares in [company name], which part funded the research grant for this project. All other authors have no competing interests." \\
-If there are no competing interests, please add the statement:
-“The authors declare that they have no competing interests.” }
-
 \bibliography{spinsim}{}
 \bibliographystyle{vancouver}
-
-\section*{References}
-
-
-
-\textcolor{blue}{Please enter references in the Harvard style and include a DOI where available, citing them in the text with a number in square brackets, e.g. \\ }
-
-\textcolor{blue}{[1] Piwowar, H A 2011 Who Shares? Who Doesn't? Factors Associated with Openly Archiving Raw Research Data. PLoS ONE 6(7): e18657. DOI: \\ http://dx.doi.org/10.1371/journal.pone.0018657.}
 
 \vspace{2cm}
 

@@ -13,45 +13,45 @@ Warning--empty author and editor in morris_qcmonkatomicpy_2018
 Warning--missing publisher in morris_qcmonkatomicpy_2018
 Warning--empty author and editor in alexander-tritt-monash_alexander-tritt-monashneural-sense_2020
 Warning--missing publisher in alexander-tritt-monash_alexander-tritt-monashneural-sense_2020
-You've used 18 entries,
+You've used 19 entries,
             3177 wiz_defined-function locations,
-            792 strings with 9770 characters,
-and the built_in function-call counts, 34392 in all, are:
-= -- 4350
-> -- 212
-< -- 2
-+ -- 146
-- -- 53
-* -- 2903
-:= -- 3711
-add.period$ -- 91
-call.type$ -- 18
-change.case$ -- 14
+            799 strings with 9972 characters,
+and the built_in function-call counts, 34763 in all, are:
+= -- 4378
+> -- 216
+< -- 3
++ -- 154
+- -- 54
+* -- 2916
+:= -- 3765
+add.period$ -- 94
+call.type$ -- 19
+change.case$ -- 16
 chr.to.int$ -- 0
-cite$ -- 22
-duplicate$ -- 2717
-empty$ -- 3342
-format.name$ -- 68
-if$ -- 8090
+cite$ -- 23
+duplicate$ -- 2732
+empty$ -- 3382
+format.name$ -- 70
+if$ -- 8180
 int.to.chr$ -- 0
-int.to.str$ -- 18
-missing$ -- 198
-newline$ -- 114
-num.names$ -- 20
-pop$ -- 346
+int.to.str$ -- 19
+missing$ -- 204
+newline$ -- 119
+num.names$ -- 21
+pop$ -- 362
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 0
-skip$ -- 333
+skip$ -- 356
 stack$ -- 0
-substring$ -- 6739
-swap$ -- 444
-text.length$ -- 2
+substring$ -- 6749
+swap$ -- 471
+text.length$ -- 3
 text.prefix$ -- 0
 top$ -- 0
 type$ -- 0
 warning$ -- 4
-while$ -- 170
-width$ -- 20
-write$ -- 244
+while$ -- 176
+width$ -- 21
+write$ -- 255
 (There were 4 warnings)

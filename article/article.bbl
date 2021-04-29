@@ -9,6 +9,13 @@ Lam SK, Pitrou A, Seibert S.
 \newblock Available from:
   \url{http://dl.acm.org/citation.cfm?doid=2833157.2833162}.
 
+\bibitem{lattner_llvm_2004}
+Lattner C, Adve V.
+\newblock {LLVM}: a compilation framework for lifelong program analysis
+  transformation.
+\newblock In: International {Symposium} on {Code} {Generation} and
+  {Optimization}, 2004. {CGO} 2004.; 2004. p. 75--86.
+
 \bibitem{nickolls_scalable_2008}
 Nickolls J, Buck I, Garland M, Skadron K.
 \newblock Scalable {Parallel} {Programming} with {CUDA}: {Is} {CUDA} the
@@ -16,13 +23,13 @@ Nickolls J, Buck I, Garland M, Skadron K.
 \newblock Queue. 2008 Mar;6(2):40--53.
 \newblock Available from: \url{https://doi.org/10.1145/1365490.1365500}.
 
-\bibitem{huang_quantum_2014}
-Huang J, Wu S, Zhong H, Lee C.
-\newblock Quantum {Metrology} with {Cold} {Atoms}.
-\newblock arXiv:13086092 [cond-mat, physics:physics, physics:quant-ph]. 2014
-  May;2:365--415.
-\newblock ArXiv: 1308.6092.
-\newblock Available from: \url{http://arxiv.org/abs/1308.6092}.
+\bibitem{degen_quantum_2017}
+Degen CL, Reinhard F, Cappellaro P.
+\newblock Quantum sensing.
+\newblock Reviews of Modern Physics. 2017 Jul;89(3):035002.
+\newblock Publisher: American Physical Society.
+\newblock Available from:
+  \url{https://link.aps.org/doi/10.1103/RevModPhys.89.035002}.
 
 \bibitem{morris_qcmonkatomicpy_2018}
 Morris J. {QCmonk}/{Atomicpy}; 2018.
