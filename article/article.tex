@@ -146,15 +146,23 @@ Time dependent Schroedinger equation; Spin one; Spin half; Integrator; GPU; Solv
 				\psi(t) &= U(t, t_0)\psi(t_0).
 			\end{align*}
 			
-			This means that a time series for the state of the system can be evaluated by evaluating the time evolution operator between each of the sample times.
+			This means that a time series for the state of the system can be evaluated by evaluating the time evolution operator between each of the sample times. Consider quantising time with
+			\begin{align*}
+				t_k &= t_0 + \mathrm{D}t\cdot k,
+			\end{align*}
+
+			where \(\mathrm{D}t\) is the time step of the time series. Then we can define a sequence of states and time evolution operators
+
+			\begin{align*}
+				\psi_k = \psi(t_k)\textrm{ and}\\
+				U_k = U(t_{k}, t_{k-1})
+			\end{align*}
 			
 			\begin{align*}
 				\psi_k &= U_k\psi_{k-1}\textrm{, standing for}\\
 				\psi(t_{k}) &= U(t_{k}, t_{k-1})\psi(t_{k-1})\textrm{, where}\\
 				t_k &= t_0 + \mathrm{D}t\cdot k
 			\end{align*}
-			
-			with \(\mathrm{D}t\) the time step of the time series.
 
 			Also importantly, while each of the \(\psi_k\) must be evaluated sequentially, the value of the \(U_k\) is independent of the value of any \(\psi_{k_0}\), or any other \(U_{k_0}\). This means that the time evolution operators \(U_k\) can all be calculated in parallel, and it allows \texttt{spinsim} to use GPU parallelisation on the level of time sample points, so a speed up is achieved even if just a single simulation is run.
 
