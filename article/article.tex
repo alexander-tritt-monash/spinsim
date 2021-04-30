@@ -124,7 +124,7 @@ Time dependent Schroedinger equation; Spin one; Spin half; Integrator; GPU; Solv
 					0 & -i &  0 \\
 					i &  0 & -i \\
 					0 &  i &  0
-				\end{pmatrix},\\
+				\end{pmatrix},\nonumber\\
 				J_z &= \begin{pmatrix}
 					1 & 0 &  0 \\
 					0 & 0 &  0 \\
@@ -244,28 +244,27 @@ Time dependent Schroedinger equation; Spin one; Spin half; Integrator; GPU; Solv
 			
 			For spin half, the default exponentiator is in an analytic form. For spin one, an exponentiator based on the Lie Trotter product formula \cite{moler_nineteen_2003} is used. Specifically, the exponential can be approximated as, for large \(\tau\),
 
-            \begin{align*}
+            \begin{align}
                 E(g) &= \exp(-ig_x J_x - ig_y J_y - ig_z J_z - ig_q Q)\\
                 &= \exp(2^{-\tau}(-ig_x J_x - ig_y J_y - ig_z J_z - ig_q Q))^{2^\tau}\\
                 &\approx (\exp(-i(2^{-\tau} g_x) J_x) \exp(-i(2^{-\tau} g_y) J_y) \exp(-i(2^{-\tau} g_z J_z + (2^{-\tau} g_q) Q)))^{2^\tau}\\
                 &= \begin{pmatrix}
-                    \frac{e^{-i\left(Z + \frac{Q}{3}\right)}(c_X + c_Y - i s_Xs_Y)}{2} & \frac{e^{i\frac{2Q}{3}} (-s_Y -i c_Y s_X)}{\sqrt{2}} & \frac{e^{-i\left(-Z + \frac{Q}{3}\right)}(c_X - c_Y + i s_Xs_Y)}{2} \\
-                    \frac{e^{-i\left(Z + \frac{Q}{3}\right)} (-i s_X + c_X s_Y)}{\sqrt{2}} & e^{i\frac{2Q}{3}} c_X c_Y & \frac{e^{-i(Z - \frac{Q}{3})} (-i s_X - c_X s_Y)}{\sqrt{2}} \\
-                    \frac{e^{-i\left(Z + \frac{Q}{3}\right)}(c_X - c_Y - i s_Xs_Y)}{2} & \frac{e^{i\frac{2Q}{3}} (s_Y -i c_Y s_X)}{\sqrt{2}} & \frac{e^{-i\left(-Z + \frac{Q}{3}\right)}(c_X + c_Y + i s_Xs_Y)}{2}
-                \end{pmatrix}^{2^\tau}\\
-                &= T^{2^\tau},
-            \end{align*}
+                    \frac{e^{-i\left(Z + \frac{P}{3}\right)}(c_X + c_Y - i s_Xs_Y)}{2} & \frac{e^{i\frac{2P}{3}} (-s_Y -i c_Y s_X)}{\sqrt{2}} & \frac{e^{-i\left(-Z + \frac{P}{3}\right)}(c_X - c_Y + i s_Xs_Y)}{2} \\
+                    \frac{e^{-i\left(Z + \frac{P}{3}\right)} (-i s_X + c_X s_Y)}{\sqrt{2}} & e^{i\frac{2P}{3}} c_X c_Y & \frac{e^{-i(Z - \frac{P}{3})} (-i s_X - c_X s_Y)}{\sqrt{2}} \\
+                    \frac{e^{-i\left(Z + \frac{P}{3}\right)}(c_X - c_Y - i s_Xs_Y)}{2} & \frac{e^{i\frac{2P}{3}} (s_Y -i c_Y s_X)}{\sqrt{2}} & \frac{e^{-i\left(-Z + \frac{P}{3}\right)}(c_X + c_Y + i s_Xs_Y)}{2}
+                \end{pmatrix}^{2^\tau}
+            \end{align}
 
 			with
 
-            \begin{align*}
-                X &= 2^{-\tau}g_x,\\
-                Y &= 2^{-\tau}g_y,\\
-                Z &= 2^{-\tau}g_z,\\
-                Q &= 2^{-\tau}g_q,\\
-                c_{\theta} &= \cos(\theta),\\
+            \begin{align}
+                X &= 2^{-\tau}g_x,&
+                Y &= 2^{-\tau}g_y,\nonumber\\
+                Z &= 2^{-\tau}g_z,&
+                P &= 2^{-\tau}g_q,\nonumber\\
+                c_{\theta} &= \cos(\theta),&
                 s_{\theta} &= \sin(\theta).
-            \end{align*}
+            \end{align}
         
 			Once \(T\) is calculated, it is then recursively squared \(\tau\) times to obtain \(E(g)\). The approach used for spin one exponentiation means that the package cannot solve arbitrary spin one quantum systems, as that would require the ability to exponentiate a point in the full, 8 dimensional Lie algebra of \(\mathfrak{su}(3)\), rather than just the four dimensional subspace spanned by the subalgebra \(\mathfrak{su}(2)\) spanned by \(\{J_x, J_y, J_z\}\), and the single quadratic operator \(Q\). Including the full algebra could be possible as a feature update if there is demand for it, though just including this subspace is sufficient for our application, and many others, and has the advantage of being able to use this faster, more specialised method of matrix exponentiation.
 
@@ -292,23 +291,24 @@ Time dependent Schroedinger equation; Spin one; Spin half; Integrator; GPU; Solv
 		\subsubsection*{Speed}
 			Benchmarks were performed using \texttt{sense.sim.benchmark}, by comparing evaluation speed of typical spin one sensing experiments on different devices. This is shown in Figure \ref{fig:benchmark_device_aggregate}. The integration code was compiled by \texttt{numba} for single core CPUs, multicore CPUs, and \emph{Nvidia Cuda}, and run on different devices. These devices are,
 			\begin{itemize}
-				\item {} 
-				Intel Core i7-8750H, a 6 core laptop processor released in 2018. Run with 16GiB of RAM. Air cooled (laptop fan). Base clock speed of 2.2GHz.
+				\item{
+					Computer A\begin{itemize}
+						\item Intel Core i7-8750H, a 6 core laptop processor released in 2018. Run with 16GiB of RAM. Air cooled (laptop fan). Base clock speed of 2.2GHz.
+						\item Nvidia GeForce GTX 1070, a 2048 \emph{Cuda} core laptop graphics processor released in 2016. Run with 8GiB of VRAM. Air cooled (laptop fan).
+					\end{itemize}
+				}
 
-				\item {} 
-				AMD Ryzen 7 5800X, an 8 core desktop processor released in 2020. Run with 32GiB of RAM. Liquid cooled. Base clock speed of 3.8GHz.
+				\item{Computer B\begin{itemize}
+						\item AMD Ryzen 9 5900X, a 12 core desktop processor released in 2020. Run with 32GiB of RAM. Air cooled. Base clock speed of 3.7GHz.
+						\item Nvidia GeForce RTX 3070, a 5888 \emph{Cuda} core desktop graphics processor released in 2020. Run with 8GiB of VRAM. Air cooled.
+					\end{itemize}
+				}
 
-				\item {} 
-				AMD Ryzen 9 5900X, a 12 core desktop processor released in 2020. Run with 32GiB of RAM. Air cooled. Base clock speed of 3.7GHz.
-
-				\item {} 
-				Nvidia GeForce GTX 1070, a 2048 \emph{Cuda} core laptop graphics processor released in 2016. Run with 8GiB of VRAM. Air cooled (laptop fan).
-
-				\item {} 
-				Nvidia GeForce RTX 3070, a 5888 \emph{Cuda} core desktop graphics processor released in 2020. Run with 8GiB of VRAM. Air cooled.
-
-				\item {} 
-				Nvidia GeForce RTX 3080, an 8704 \emph{Cuda} core desktop graphics processor released in 2020. Run with 10GiB of VRAM. Air cooled.
+				\item{Computer C\begin{itemize}
+						\item AMD Ryzen 7 5800X, an 8 core desktop processor released in 2020. Run with 32GiB of RAM. Liquid cooled. Base clock speed of 3.8GHz.
+						\item Nvidia GeForce RTX 3080, an 8704 \emph{Cuda} core desktop graphics processor released in 2020. Run with 10GiB of VRAM. Air cooled.
+					\end{itemize}
+				}
 			\end{itemize}
 
 			\begin{figure}[h!]
@@ -347,11 +347,21 @@ Time dependent Schroedinger equation; Spin one; Spin half; Integrator; GPU; Solv
 			Figure \ref{fig:benchmark_comparison_spin_half_a} shows that the Lie Trotter based exponentiator does limit the maximum accuracy obtainable, and for spin half systems, one can increase accuracy further (and decrease execution time) by using an analytic based exponentiator.
 
 		\subsubsection*{Comparison to alternatives}
-			As mentioned before, compared to our previous code, \texttt{AtomicPy}, the best performing \texttt{spinsim} method is 5 orders of magnitude more accurate, while executing in a time 2 orders of magnitude faster.
+			We compared \texttt{spinsim} to other separate packages. These were all run on computer C, which from Figure \ref{fig:benchmark_device_aggregate} has the fastest CPU (liquid cooled AMD Ryzen 7 5800X) and GPU (Nvidia GeForce RTX 3080). The packages compared were:
+			\begin{itemize}
+				\item \texttt{spinsim} running on the \emph{Cuda} device, using the CF4 integrator and the rotating frame mode.
+				\item \texttt{AtomicPy} \cite{morris_qcmonkatomicpy_2018}, the previous custom written \emph{cython} based code developed by our lab group.
+				\item \texttt{NDSolve} from the \emph{Mathematica} \cite{wolfram_research_inc_mathematica_2020} software. This was chosen as it is popular with our lab group for simulating magnetometry experiments.
+				\item \texttt{scipy.integrate.ivp\_solve()} from the \emph{python} library \texttt{SciPy} \cite{virtanen_scipy_2020}. This was chosen as a generic solver from within the python ecosystem.
+				\item We had also planned to benchmark against \texttt{qutip.sesolve()}, a solver in the popular quantum mechanics \emph{python} library, \texttt{QuTip} \cite{johansson_qutip_2013}. However, due to a known bug with the library’s dependencies, this was not installable on Windows 10, the operating system being used for testing, and so benchmarks for it could not be run.
+			\end{itemize}
 
-			Another solver used by the lab group is \emph{Mathematica}'s \texttt{NDSolve}.
+			We 
+			% Compared to our previous code, \texttt{AtomicPy}, the best performing (default) spin one \texttt{spinsim} method is 5 orders of magnitude more accurate, while executing in a time 2 orders of magnitude faster on computer A. Another popular solver used by the lab group for magnetometry simulations is \emph{Mathematica}'s \cite{wolfram_research_inc_mathematica_2020} \texttt{NDSolve}. For a comparison between python packages, we also 
 
-			We had planned to benchmark against some other popular generic solvers. One such solver was \texttt{qutip.sesolve()}, a solver in the popular quantum mechanics \emph{python} library, \texttt{QuTip} \cite{johansson_qutip_2013}. However, due to a known bug with the library’s dependencies, this was not installable on Windows 10, the operating system being used for testing, and so benchmarks for it could not be run. We also planned to benchmark accuracy against the generic solver \texttt{scipy.integrate.ivp\_solve()} in the \emph{python} library \texttt{SciPy} \cite{virtanen_scipy_2020}. However, using the same \texttt{get\_field} function as in the spin one benchmarks used for the \texttt{spinsim}, simulating with a fine time step of 500ns (the largest used during the \texttt{spinsim} benchmarks), we found that a single simulation ran in 153s, which is over three orders of magnitude slower than the most accurate \texttt{spinsim} simulations. This means that a generous projection for the time it would take to run the same benchmarks that \texttt{spinsim} runs in 11 minutes, using \texttt{scipy} would be over six days; for an integration package not designed for this problem (and would therefore likely be less accurate).
+			% We had also planned to benchmark against \texttt{qutip.sesolve()}, a solver in the popular quantum mechanics \emph{python} library, \texttt{QuTip} \cite{johansson_qutip_2013}. However, due to a known bug with the library’s dependencies, this was not installable on Windows 10, the operating system being used for testing, and so benchmarks for it could not be run.
+
+			% We had planned to benchmark against some other popular generic solvers. One such solver was \texttt{qutip.sesolve()}, a solver in the popular quantum mechanics \emph{python} library, \texttt{QuTip} \cite{johansson_qutip_2013}. However, due to a known bug with the library’s dependencies, this was not installable on Windows 10, the operating system being used for testing, and so benchmarks for it could not be run. We also planned to benchmark accuracy against the generic solver \texttt{scipy.integrate.ivp\_solve()} in the \emph{python} library \texttt{SciPy} \cite{virtanen_scipy_2020}. However, using the same \texttt{get\_field} function as in the spin one benchmarks used for the \texttt{spinsim}, simulating with a fine time step of 500ns (the largest used during the \texttt{spinsim} benchmarks), we found that a single simulation ran in 153s, which is over three orders of magnitude slower than the most accurate \texttt{spinsim} simulations. This means that a generous projection for the time it would take to run the same benchmarks that \texttt{spinsim} runs in 11 minutes, using \texttt{scipy} would be over six days; for an integration package not designed for this problem (and would therefore likely be less accurate).
 
 	\subsection*{Testing}
 		The simulator as a whole has been functionally tested against well known analytic approximations of the behaviour spin systems. This was done for every combination of integrator settings possible when compiling the integrator. The system was benchmarked in terms of accuracy vs fine time step, again, using every possible combination of integrator settings. This confirms that no integrator diverges away from the limiting solution when the time step is decreased in magnitude. The Lie Trotter matrix exponentiator was tested separately from the full system, as well as benchmarked separately.
