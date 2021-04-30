@@ -52,6 +52,11 @@ Di Y, Wang Y, Wei H.
 \newblock Available from:
   \url{https://doi.org/10.1088%2F1751-8113%2F43%2F6%2F065303}.
 
+\bibitem{j_j_sakurai_jun_john_modern_1994}
+{J J Sakurai (Jun John)}.
+\newblock Modern quantum mechanics.
+\newblock Rev. ed. ed. Reading, Mass.: Addison-Wesley PubCo; 1994.
+
 \bibitem{auer_magnus_2018}
 Auer N, Einkemmer L, Kandolf P, Ostermann A.
 \newblock Magnus integrators on multicore {CPUs} and {GPUs}.
@@ -89,12 +94,6 @@ Virtanen P, Gommers R, Oliphant TE, Haberland M, Reddy T, Cournapeau D, et~al.
 \newblock Number: 3 Publisher: Nature Publishing Group.
 \newblock Available from:
   \url{https://www.nature.com/articles/s41592-019-0686-2}.
-
-\bibitem{candes_introduction_2008}
-Candes EJ, Wakin MB.
-\newblock An {Introduction} {To} {Compressive} {Sampling}.
-\newblock IEEE Signal Processing Magazine. 2008 Mar;25(2):21--30.
-\newblock Conference Name: IEEE Signal Processing Magazine.
 
 \bibitem{parashar_axon_2020}
 Parashar M, Saha K, Bandyopadhyay S.

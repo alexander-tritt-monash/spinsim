@@ -77,19 +77,19 @@ Time dependent Schroedinger equation; Spin one; Spin half; Integrator; GPU; Solv
 		\subsubsection*{Background}
 			In general, \texttt{spinsim} solves the Schroedinger equation,
 
-			\begin{align*}
+			\begin{align}
 				\frac{\mathrm{d}}{\mathrm{d}t}\psi(t) &= -iH(t)\psi(t),
-			\end{align*}
+			\end{align}
 
 			where \(i^2 = -1\), the state \(\psi(t) \in \mathbb{C}^N\) a time dependent, \(N\) dimensional, unit complex vector, and the Hamiltonian \(H(t) \in \mathbb{C}^{N \times N}\) is a time dependent \(N \times N\) complex Hermitian matrix. Here \(N\) is the number spin levels in the quantum system, so spin half is the \(N = 2\) case, and spin one refers to the \(N = 3\) case. Rather than being represented by standard coodintaes in \(\mathbb{C}^{N \times N}\), in \texttt{spinsim} the Hamiltonian \(H(t)\) is instead represented with respect to a choice of basis for the corresponding Lie Algebra, \(\mathfrak{su}(N)\). For example, when set to spin half mode, the \texttt{spinsim} package solves the time dependent Schroedinger equations of the form
 
-			\begin{align*}
+			\begin{align}
 				\frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (f_x(t) J_x + f_y(t) J_y + f_z(t) J_z) \psi(t),
-			\end{align*}
+			\end{align}
 
 			where \(i^2 = -1\), \(\psi(t) \in \mathbb{C}^2\), and the spin half spin projection operators are given by
 
-			\begin{align*}
+			\begin{align}
 				J_x &= \frac12\begin{pmatrix}
 					0 & 1 \\
 					1 & 0
@@ -102,19 +102,19 @@ Time dependent Schroedinger equation; Spin one; Spin half; Integrator; GPU; Solv
 					1 &  0 \\
 					0 & -1
 				\end{pmatrix}.
-			\end{align*}
+			\end{align}
 
 			The energy source \(f\) that represents the time dependent Hamiltonian \(H(t)\), is the collection of energy functions \(f_x(t), f_y(t), f_z(t)\), with \(t\) in units of s and \(f\) in units of Hz that control the dynamics of the system. The user must define a method that returns a sample of these source functions when a sampling time is input. In physical terms, these functions could represent the \(x,y,z\) components of a magnetic field applied to a magnetically sensitive.
 
 			Similarly, when \texttt{spinsim} is set to spin one mode, it can solve the Schroedinger equation of the form
 
-			\begin{align*}
+			\begin{align}
 				\frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (f_x(t) J_x + f_y(t) J_y + f_z(t) J_z + f_q(t) Q) \psi(t).
-			\end{align*}
+			\end{align}
 
 			where now \(\psi(t) \in \mathbb{C}^3\), and the spin one operators are given by
 
-			\begin{align*}
+			\begin{align}
 				J_x &= \frac{1}{\sqrt{2}}\begin{pmatrix}
 					0 & 1 & 0 \\
 					1 & 0 & 1 \\
@@ -135,102 +135,141 @@ Time dependent Schroedinger equation; Spin one; Spin half; Integrator; GPU; Solv
 					0 & -2 & 0 \\
 					0 &  0 & 1
 				\end{pmatrix}.
-			\end{align*}
+			\end{align}
 
 			The matrices \(J_x, J_y, J_z\) are regular spin operators, and \(Q\) is a quadrupole operator. Note that \(Q\) is proportional to \(Q_{zz}\) as defined by Hamley et al \cite{hamley_spin-nematic_2012}, and \(Q_0\) as defined by Di et al \cite{di_dipolequadrupole_2010}.
 
 		\subsubsection*{Parallelisation}
 			Given that \(\psi(t)\) is a unit vector, it is possible to write \(\psi(t)\) in terms of a unitary transformation \(U(t, t_0)\) of the state \(\psi(t_0)\), for any time \(t_0\). In other words, for any \(t_0,t \in \mathbb{R}\), there is a unitary transformation \(U(t, t_0)\) such that
 			
-			\begin{align*}
+			\begin{align}
 				\psi(t) &= U(t, t_0)\psi(t_0).
-			\end{align*}
+			\end{align}
 			
 			This means that a time series for the state of the system can be evaluated by evaluating the time evolution operator between each of the sample times. Consider quantising time with
-			\begin{align*}
+			\begin{align}
 				t_k &= t_0 + \mathrm{D}t\cdot k,
-			\end{align*}
+			\end{align}
 
-			where \(\mathrm{D}t\) is the time step of the time series. Then we can define a sequence of states and time evolution operators
+			where \(\mathrm{D}t\) is the time step of the time series (in contrast to \(\mathrm{d}t\), a smaller time step for integration). If we define
 
-			\begin{align*}
+			\begin{align}
 				\psi_k = \psi(t_k)\textrm{ and}\\
-				U_k = U(t_{k}, t_{k-1})
-			\end{align*}
+				U_k = U(t_{k}, t_{k-1}),
+			\end{align}
 			
-			\begin{align*}
-				\psi_k &= U_k\psi_{k-1}\textrm{, standing for}\\
-				\psi(t_{k}) &= U(t_{k}, t_{k-1})\psi(t_{k-1})\textrm{, where}\\
-				t_k &= t_0 + \mathrm{D}t\cdot k
-			\end{align*}
+			then the time series of states \(\psi_k\) and time evolution operators \(U_k\) satisfies
 
-			Also importantly, while each of the \(\psi_k\) must be evaluated sequentially, the value of the \(U_k\) is independent of the value of any \(\psi_{k_0}\), or any other \(U_{k_0}\). This means that the time evolution operators \(U_k\) can all be calculated in parallel, and it allows \texttt{spinsim} to use GPU parallelisation on the level of time sample points, so a speed up is achieved even if just a single simulation is run.
+			\begin{align}
+				\psi_k &= U_k\psi_{k-1}\label{eq:integration_compilation}
+			\end{align}
 
-			In summary, \texttt{spinsim} splits the time evolution of the full simulation into time evolution \(U_k\) within small time intervals \([t_{k - 1}, t_{k}]\), which are each calculated massively in parallel on a GPU. When all the \(U_k\) are calculated CPU then multiplies the \(U_k\) together (a comparatively less demanding job than calculating them) to determine the \(\psi_k\).
+			This presents an opportunity for parallelism. While each of the \(\psi_k\) must be evaluated sequentially, the value of the \(U_k\) is independent of the value of any \(\psi_{k_0}\), or any other \(U_{k_0}\). This means that the time evolution operators \(U_k\) can all be calculated in parallel, and it allows \texttt{spinsim} to use GPU parallelisation on the level of time sample points, so a speed up is achieved even if just a single simulation is run.
+
+			In summary, \texttt{spinsim} splits the time evolution of the full simulation into time evolution \(U_k\) within small time intervals \([t_{k - 1}, t_{k}]\), which are each calculated massively in parallel on a GPU. When all the \(U_k\) are calculated, the CPU then multiplies the \(U_k\) together (a comparatively less demanding job than calculating them) using Equation \eqref{eq:integration_compilation} to determine the \(\psi_k\).
 
 		\subsubsection*{Rotating frame}
-			If the rotating frame option is selected, the \(U_k\) are first calculated within a local rotating frame as \(U^r_k\), which shrinks the size of the terms used in the calculation, increasing accuracy. The midpoint value \(f_r = f_z(t_k + \frac12\mathrm{D}t)\) is sampled to be removed from the source. This transforms the source functions as follows,
+			If the rotating frame option is selected, the \(U_k\) are first calculated within a rotating frame of reference as \(U^r_k\), which, in some situations, reduces the size of the source functions used in the calculation, increasing accuracy. The rotation speed of the rotating frame is calculated locally for each parallel time step \(U_k\), and only for rotations around the \(z\) axis. The rotating from source functions \(f^r_x, f^r_y, f^r_z,\) and \(f^r_q\) are related to the source function from the user input via
 			
-			\begin{align*}
+			\begin{align}
 				f^r_x(t) + if^r_y(t) &= e^{-i 2\pi f_r t}(f_x(t) + if_y(t)),\\
-				f^r_z(t) &= f_z(t) - f_r,\\
-				f^r_q(t) &= f_q(t), \textrm{ for spin one.}\\
-			\end{align*}
+				f^r_z(t) &= f_z(t) - f_r\textrm{, and}\\
+				f^r_q(t) &= f_q(t), \textrm{ for spin one.}
+			\end{align}
 			
-			This, (assuming that a midpoint sample is representative of an average value over the time interval), decreases the magnitude of \(f_z(t)\), while leaving the other source components at an equivalent magnitude. The rotation is then applied to obtain the lab frame time evolution operator \(U_k\),
+			Where \(f_r = f_z(t_k + \frac12\mathrm{D}t)\) is sampled the midpoint value of the source over the interval \([t_{k - 1}, t_k]\). This, assuming that a midpoint sample is representative of an average value over the time interval, decreases the magnitude of \(f_z(t)\), while leaving the other source components at an equivalent magnitude. The rotation is then applied to obtain the lab frame time evolution operator \(U_k\) via
 			
-			\begin{align*}
-				U_k &= \exp(-i 2 \pi f_r J_z \mathrm{D}t) U^r_k,\\
+			\begin{align}
+				U_k &= \exp(-i 2 \pi f_r J_z \mathrm{D}t) U^r_k.
+			\end{align}
+
+			Specifically, this relationship is
+
+			\begin{align}
 				U_k &= \begin{pmatrix}
 					e^{-i 2\pi f_r \mathrm{D}t} & 0 & 0\\
 					0 & 1 & 0\\
 					0 & 0 & e^{i 2\pi f_r \mathrm{D}t}
-				\end{pmatrix} U^r_k, \textrm{ for spin one}\\
+				\end{pmatrix} U^r_k, \textrm{ for spin one, and}\\
 				U_k &= \begin{pmatrix}
 					e^{-i \pi f_r \mathrm{D}t} & 0\\
 					0 & e^{i \pi f_r \mathrm{D}t}
 				\end{pmatrix} U^r_k, \textrm{ for spin half.}
-			\end{align*}
+			\end{align}
+
+			It is a common technique in solving quantum mechanical problems to enter rotating frames, and their more abstract counterparts of interaction pictures \cite{j_j_sakurai_jun_john_modern_1994}. Note that this is typically done in conjunction with the Rotating Wave Approximation (RWA), which is an assumption that the oscillatory components of \(f^r_x, f^r_y, f^r_z,\) and \(f^r_q\) on an average of many cycles do not have a large contribution to time evolution of the solution and can be ignored. In some cases, this allows for analytic solutions to the approximate quantum system to be obtained. Note that the RWA is \emph{not} invoked in \texttt{spinsim}, as doing this would reduce the accuracy of simulation results, defeating our purpose of using a rotating frame.
 			
 		\subsubsection*{Magnus based integration method}
-			The integration method used in \texttt{spinsim} is the CF4 method from Auer et al \cite{auer_magnus_2018}. Each of the \(U_k\) are split into products of time evolution operators between times separated by a smaller timestep,
+			The integration method used in \texttt{spinsim} is the CF4 method from Auer et al \cite{auer_magnus_2018}. Each of the \(U_k\) are split into products of time evolution operators between times separated by a smaller timestep, that is,
 			
-			\begin{align*}
+			\begin{align}
 				U(t_k, t_{k-1}) &= U(t_k, t_k - \mathrm{d}t) \cdots U(t_{k-1} + 2\mathrm{d}t, t_{k-1} + \mathrm{d}t) U(t_{k-1} + \mathrm{d}t, t_{k-1})\\
-				U_k &= u^k_{L-1} \cdots u^k_0,
-			\end{align*}
-			
-			with \(\mathrm{d}t\) being the integration level, (ie, fine) time step.
+				U_k &= u^k_{L-1} \cdots u^k_0,\textrm{, where}\\
+				u^k_{L-1} &= U(t_0 + (k - 1)\mathrm{D}t + (l + 1)\mathrm{d}t, t_0 + (k - 1)\mathrm{D}t + l\mathrm{d}t)
+			\end{align}
 
-			The CF4 method is used to calculate each individual \(u^k_l\). Let the fine sample time be given by \(t_f = l\mathrm{d}t + t_k\). Then as part of the CF4 method, the source functions are sampled at particular times based on the second order Gauss-Legendre quadrature,
+			with \(\mathrm{d}t\) being the integration level, (ie, fine) time step. Note that the timesteps are related to each other by \(\mathrm{D}t = L\mathrm{d}t\), where \(L\in\mathbb{N}\).
+
+			The CF4 method is used to calculate each individual \(u^k_l\). Let the fine sample time be given by \(t_f = l\mathrm{d}t + t_k\). Then as part of the CF4 method, the source functions are sampled at particular times based on the second order Gauss-Legendre quadrature, given by
 			
-			\begin{align*}
-				f(t_1) &= (f_x(t_1), f_y(t_1), f_z(t_1), f_q(t_1)), \textrm{ with}\\
-				t_1 &= t_f + \frac12 \mathrm{d}t\left(1 - \frac{1}{\sqrt{3}}\right),\\
-				f(t_2) &= (f_x(t_2), f_y(t_2), f_z(t_2), f_q(t_2)), \textrm{ with}\\
+			\begin{align}
+				t_1 &= t_f + \frac12 \mathrm{d}t\left(1 - \frac{1}{\sqrt{3}}\right)\textrm{, and}\\
 				t_2 &= t_f + \frac12 \mathrm{d}t\left(1 + \frac{1}{\sqrt{3}}\right).
-			\end{align*}
+			\end{align}
+
+			Now, let
+			\begin{align}
+				f(t_1) &= (f_x(t_1), f_y(t_1), f_z(t_1), f_q(t_1))\textrm{, and}
+				f(t_2) &= (f_x(t_2), f_y(t_2), f_z(t_2), f_q(t_2)).
+			\end{align}
 			
 			The fine time evolution operator can then be calculated using
 			
-			\begin{align*}
-				g_1 =& 2 \pi \mathrm{d}t \left(\frac{3 + 2 \sqrt{3}}{12} f(t_1) + \frac{3 - 2 \sqrt{3}}{12} f(t_2)\right)\\
-				g_2 =& 2 \pi \mathrm{d}t \left(\frac{3 - 2 \sqrt{3}}{12} f(t_1) + \frac{3 + 2 \sqrt{3}}{12} f(t_2)\right)\\
+			\begin{align}
+				g_1 =& (g_{1,x}, g_{1,y}, g_{1,z}, g_{1,q})\\
+				=& 2 \pi \mathrm{d}t \left(\frac{3 + 2 \sqrt{3}}{12} f(t_1) + \frac{3 - 2 \sqrt{3}}{12} f(t_2)\right)\textrm{, and}\\
+				g_2 =& (g_{2,x}, g_{2,y}, g_{2,z}, g_{2,q})\\
+				=& 2 \pi \mathrm{d}t \left(\frac{3 - 2 \sqrt{3}}{12} f(t_1) + \frac{3 + 2 \sqrt{3}}{12} f(t_2)\right)\textrm{, so}\\
 				u =& \exp(-i \left( g_{2,x} J_x + g_{2,y} J_y + g_{2,z} J_z + g_{2,q} Q\right))\\
 				&\cdot\exp(-i \left( g_{1,x} J_x + g_{1,y} J_y + g_{1,z} J_z + g_{1,q} Q\right)).
-			\end{align*}
+			\end{align}
 
 		\subsubsection*{Exponentiator}
-			For all exponentiation, the exponentiator takes exponent in the form of
+			For all exponentiation, the exponentiator computes the matrix exponential
 			
-			\begin{align*}
-				E(g) &= \exp(-i (g_x J_x + g_y J_y + g_z J_z + g_q Q)), \textrm{ with}\\
-				g &= (g_x, g_y, g_z, g_q)
-			\end{align*}
+			\begin{align}
+				E(g) &= E(g_x, g_y, g_z, g_q)\\
+				&= \exp(-i (g_x J_x + g_y J_y + g_z J_z + g_q Q)), \textrm{ with}
+			\end{align}
 			
-			For spin half, the default exponentiator is in an analytic form. For spin one, an exponentiator based on the Lie Trotter product formula \cite{moler_nineteen_2003} is used. Importantly, these two methods both use analytic forms of exponentials to construct the result, meaning that all calculated time evolution operators are unitary.
+			For spin half, the default exponentiator is in an analytic form. For spin one, an exponentiator based on the Lie Trotter product formula \cite{moler_nineteen_2003} is used. Specifically, the exponential can be approximated as, for large \(\tau\),
 
-			This also means that the package cannot solve arbitrary spin one quantum systems, as that would require the ability to exponentiate a point in the full, 8 dimensional Lie algebra of \(\mathfrak{su}(3)\), rather than just the four dimensional subspace spanned by the subalgebra \(\mathfrak{su}(2)\) spanned by \(\{J_x, J_y, J_z\}\), and the single quadratic operator \(Q\). Including the full algebra could be possible as a feature update if there is demand for it, though just including this subspace is sufficient for our application, and many others.
+            \begin{align*}
+                E(g) &= \exp(-ig_x J_x - ig_y J_y - ig_z J_z - ig_q Q)\\
+                &= \exp(2^{-\tau}(-ig_x J_x - ig_y J_y - ig_z J_z - ig_q Q))^{2^\tau}\\
+                &\approx (\exp(-i(2^{-\tau} g_x) J_x) \exp(-i(2^{-\tau} g_y) J_y) \exp(-i(2^{-\tau} g_z J_z + (2^{-\tau} g_q) Q)))^{2^\tau}\\
+                &= \begin{pmatrix}
+                    \frac{e^{-i\left(Z + \frac{Q}{3}\right)}(c_X + c_Y - i s_Xs_Y)}{2} & \frac{e^{i\frac{2Q}{3}} (-s_Y -i c_Y s_X)}{\sqrt{2}} & \frac{e^{-i\left(-Z + \frac{Q}{3}\right)}(c_X - c_Y + i s_Xs_Y)}{2} \\
+                    \frac{e^{-i\left(Z + \frac{Q}{3}\right)} (-i s_X + c_X s_Y)}{\sqrt{2}} & e^{i\frac{2Q}{3}} c_X c_Y & \frac{e^{-i(Z - \frac{Q}{3})} (-i s_X - c_X s_Y)}{\sqrt{2}} \\
+                    \frac{e^{-i\left(Z + \frac{Q}{3}\right)}(c_X - c_Y - i s_Xs_Y)}{2} & \frac{e^{i\frac{2Q}{3}} (s_Y -i c_Y s_X)}{\sqrt{2}} & \frac{e^{-i\left(-Z + \frac{Q}{3}\right)}(c_X + c_Y + i s_Xs_Y)}{2}
+                \end{pmatrix}^{2^\tau}\\
+                &= T^{2^\tau},
+            \end{align*}
+
+			with
+
+            \begin{align*}
+                X &= 2^{-\tau}g_x,\\
+                Y &= 2^{-\tau}g_y,\\
+                Z &= 2^{-\tau}g_z,\\
+                Q &= 2^{-\tau}g_q,\\
+                c_{\theta} &= \cos(\theta),\\
+                s_{\theta} &= \sin(\theta).
+            \end{align*}
+        
+			Once \(T\) is calculated, it is then recursively squared \(\tau\) times to obtain \(E(g)\). The approach used for spin one exponentiation means that the package cannot solve arbitrary spin one quantum systems, as that would require the ability to exponentiate a point in the full, 8 dimensional Lie algebra of \(\mathfrak{su}(3)\), rather than just the four dimensional subspace spanned by the subalgebra \(\mathfrak{su}(2)\) spanned by \(\{J_x, J_y, J_z\}\), and the single quadratic operator \(Q\). Including the full algebra could be possible as a feature update if there is demand for it, though just including this subspace is sufficient for our application, and many others, and has the advantage of being able to use this faster, more specialised method of matrix exponentiation.
+
+			Note that, the methods for both spin half and spin one use analytic forms of exponentials to construct the result, meaning that all calculated time evolution operators are unitary. This guarantees that the results of \texttt{spinsim} maintain unitary. 
 
 	\subsection*{Software architecture}
 		\subsubsection*{Integrator architecture}
@@ -240,13 +279,13 @@ Time dependent Schroedinger equation; Spin one; Spin half; Integrator; GPU; Solv
 			
 			Within the loop, the integrator enters a device function (ie a GPU subroutine, which is inline for speed) to sample \(f(t)\), as well as calculate \(e^{-i 2 \pi f_r t}\), at the sample times needed for the integration method. After this, it enters a second device function, which makes a rotating wave transformation as needed in a third device function, before calculating \(g\) values, and finally taking the matrix exponentiation in a fourth device function. \(u^k_l\) is premultiplied to \(U^r_k\) (which is initialised to \(1\)), and the loop continues.
 			
-			When the loop has finished, if the rotating frame is being used, \(U^r_k\) is transformed to \(U_k\) as above, and this is returned. Once all threads have executed, the state \(\psi_k\) is calculated in a (CPU) \texttt{numba.jit()}ed function from the \(U_k\) and an initial condition \(\psi_{\mathrm{init}}\).
+			When the loop has finished, if the rotating frame is being used, \(U^r_k\) is transformed to \(U_k\) as in Equation \eqref{eq:integration_compilation}, and this is returned. Once all threads have executed, the state \(\psi_k\) is calculated in a (CPU) \texttt{numba.jit()}ed function from the \(U_k\) and an initial condition \(\psi_{\mathrm{init}}\).
 	
 	
 		\subsubsection*{Compilation of integrator}
-			The \texttt{spinsim} integrator is constructed and compiled just in time, using \texttt{numba.cuda.jit()}. The particular device functions used are not predetermined, but are instead chosen based off user input to decide a closure. This structure has multiple advantages. Firstly, the source function \(f\) is provided by the user as a plain python function (that must be \texttt{numba.cuda.jit()} compatible). This allows users to define \(f\) in a way that compiles and executes fast, does not put many restrictions on the form of the function, and returns the accurate results of analytic functions (compared to the errors seen in interpolation). Compiling the simulator also allows the user to set metaparameters, and choose the features they want to use, in a way that does not require experience with the \texttt{numba.cuda} library. This was especially useful for running benchmarks comparing old integration methods to the new ones, like CF4. The default settings should be optimal for most users, although tuning the values of \emph{Cuda} metaparameters \texttt{max\_registers} and \texttt{threads\_per\_block} could improve performance for GPUs with a differing number of registers and \emph{Cuda} cores to the mobile GTX1070 mainly used in testing here. Finally, just in time compilation also allows the user to select a target device other than \emph{Cuda} for compilation, so the simulator can run, using the same algorithm, on a multicore CPU in parallel instead of a GPU, if the user so chooses.
+			The \texttt{spinsim} integrator is constructed and compiled just in time, using \texttt{numba.cuda.jit()}. The particular device functions used are not predetermined, but are instead chosen based on user input to decide a closure. This structure has multiple advantages. First, the source function \(f\) is provided by the user as a plain python function (that must be \texttt{numba.cuda.jit()} compatible). This allows users to define \(f\) in a way that compiles and executes fast, does not put many restrictions on the form of the function, and returns the accurate results of analytic functions (compared to the errors seen in interpolation). Compiling the simulator also allows the user to set metaparameters, and choose the features they want to use, in a way that does not require experience with the \texttt{numba.cuda} library. This was especially useful for running benchmarks comparing old integration methods to the new ones, like CF4. The default settings should be optimal for most users, although tuning the values of \emph{Cuda} metaparameters \texttt{max\_registers} and \texttt{threads\_per\_block} could improve performance for GPUs with a differing number of registers and \emph{Cuda} cores to the mobile GTX1070 mainly used in testing here. Finally, just in time compilation also allows the user to select a target device other than \emph{Cuda} for compilation, so the simulator can run, using the same algorithm, on a multicore CPU in parallel instead of a GPU, if the user so chooses.
 			
-			This functionality is interfaced through an object of class \texttt{spinsim.Simulator}. The \emph{Cuda} kernel is defined as per the user’s instructions on construction of the instance, and it is used by calling the method \texttt{spinsim.Simulator.evaluate()}, which returns a results object including the time, state, time evolution operator, and expected spin projection (that is, Bloch vector. Note that the expected spin projection is calculated as a lazy parameter if needed, rather than returned by the simulator object).
+			This functionality is interfaced through an object of class \texttt{spinsim.Simulator}. The \emph{Cuda} kernel is defined as per the user’s instructions on construction of the instance, and it is used by calling the method \texttt{spinsim.Simulator.evaluate()}, which returns a results object including the time, state, time evolution operator, and expected spin projection (that is, Bloch vector). Note that the expected spin projection is calculated as a lazy parameter if needed, rather than returned by the simulator object.
 
 \section*{Quality control}
 	\subsection*{Benchmarks}
@@ -394,13 +433,13 @@ English.
 	\subsection*{Use potential and limitations}
 		\texttt{spinsim} will be useful for any research group needing quick, accurate, and / or large numbers of simulations involving spin half or spin one systems. This is immediately relevant to developing new quantum sensing protocols with spin half and spin one systems. The package will be used in the context of Bose Einstein Condensate (BEC) magnetic sensing protocol design by our lab, both within and outside the project it was conceived for.
 
-		This project is to be able to measure neural signals using BECs. The electrical pulses made by neurons are currently measured using electrical probes, which is intrusive and damages the cells. We instead propose to sense the small magnetic fields that these electrical currents produce. Rubidium BECs can potentially be made sensitive enough to these tiny magnetic fields that they can be measured by them. An array of BECs can theoretically be made to sample the frequency components of the magnetic signal, essentially making a Fourier transform of it, which can be transformed back. Assuming that pulses do not occur very often (the signal is sparse in the time domain), a smaller BEC array with fewer frequency samples can be used to create a compressed measurement, reconstructed with theory from the field of compressive sensing \cite{candes_introduction_2008}. \texttt{spinsim} was written to simulate possible measurement protocols for this, showing the behaviour of the array of spin one atoms interacting with the magnetic fields of the neurons, control signals, and noise.
+		This project is to be able to measure neural signals using BECs. The electrical pulses made by neurons are currently measured using electrical probes, which is intrusive and damages the cells. We instead propose to sense the small magnetic fields that these electrical currents produce. Rubidium BECs can potentially be made sensitive enough to these tiny magnetic fields that they can be measured by them. \texttt{spinsim} was written to simulate possible measurement protocols for this, showing the behaviour of the array of spin one atoms interacting with the magnetic fields of the neurons, control signals, and noise. The package is also now being used to simulate other BEC magnetometry experiments by the lab group.
 
 		Another example of spin based magnetic field sensing is the use of Nitrogen Vacancy Centres (NVCs). These are spin one structures found in diamond doped with Nitrogen atoms. This leaves a vacancy in a position adjacent to the Nitrogen atom, which pairs of electrons occupy to obtain the spin one properties. Similar to BECs, NVCs can be placed and addressed in 2D arrays in order to take many samples in one measurement. A paper was only recently released covering simulation experiments of magnetic neural pulse sensing using NVCs \cite{parashar_axon_2020}, which is something that \texttt{spinsim} could be useful for.
 
 		\texttt{spinsim} is designed to simulate small dimensional quantum systems, including large arrays of non-interacting spin systems. This means that it would not be able to integrate large arrays of entangled states or interacting particles. As a result, despite being fast at simulating qubits, it is inappropriate for the package to be used for quantum computing. In addition, \texttt{spinsim} is currently designed to integrate the time evolution of pure states only. This means that it may not be adequate for use in some Nuclear Magnetic Resonance (NMR) applications where relaxation \cite{veshtort_spinevolution_2006} is important (or other kinds of simulations involving decoherence).
 
-		With these restrictions in mind, \texttt{spinsim} could be used for some simplified simulations in various areas of NMR. There are many atomic nuclei with spins of half (eg protons, Carbon 13) and, and fewer that have spins of one (eg Lithium 6, Nitrogen 14) \cite{fuller_nuclear_1976}, which, if relaxation and interactions between systems are not important for the application, \texttt{spinsim} could be used to simulate for spectroscopy experiments, for example. The inclusion of a quadrupole operator means that, with the same level of simplifications, \texttt{spinsim} should be able to simulate Nuclear Quadrupole Resonance (NQR) spectroscopy for spin one nuclei \cite{bain_nqr_2004}, such as Nitrogen 14, provided a suitable coordinate system is chosen. This technique measures energy level differences between levels split by electric field gradients, rather than static magnetic bias fields. Another possible use case could be for Magnetic Resonance Imaging (MRI) simulation and pulse sequence design. MRI uses measures the response of spins of an array of spin half protons to a spatially varying pulse sequence \cite{mckinnon_physics_1998}, which essentially just corresponds to many separate \texttt{spinsim} simulations of spins at different positions in space. While this package offers some advantages over state of the art simulators in the field \cite{kose_fast_2019}, with its use of quantum mechanics over classical mechanics, and its absence of rotating wave approximations, its parametrised pulse sequence definitions and geometric integrator, again, the lack of interacting particles and decoherence features are likely its downfall here.
+		With these restrictions in mind, \texttt{spinsim} could be used for some simplified simulations in various areas of NMR. There are many atomic nuclei with spins of half (eg protons, Carbon 13) and, and fewer that have spins of one (eg Lithium 6, Nitrogen 14) \cite{fuller_nuclear_1976}, which, if relaxation and interactions between systems are not important for the application, \texttt{spinsim} could be used to simulate for spectroscopy experiments, for example. The inclusion of a quadrupole operator means that, with the same level of simplifications, \texttt{spinsim} should be able to simulate Nuclear Quadrupole Resonance (NQR) spectroscopy for spin one nuclei \cite{bain_nqr_2004}, such as Nitrogen 14, provided a suitable coordinate system is chosen. This technique measures energy level differences between levels split by electric field gradients, rather than static magnetic bias fields. Another possible use case could be for Magnetic Resonance Imaging (MRI) simulation and pulse sequence design. MRI uses measures the response of spins of an array of spin half protons to a spatially varying pulse sequence \cite{mckinnon_physics_1998}, which essentially just corresponds to many separate \texttt{spinsim} simulations of spins at different positions in space. While this package offers some advantages over state of the art simulators in the field \cite{kose_fast_2019}, with its use of quantum mechanics over classical mechanics, and its absence of rotating wave approximations, its parametrised pulse sequence definitions and geometric integrator, again, the lack of interacting particles and decoherence features are may limit its use in this area.
 
 	\subsection*{Support}
 		Documentation for \texttt{spinsim} is available on \href{https://spinsim.readthedocs.io/en/latest/}{\emph{Read the Docs}}. This documentation contains a thorough tutorial on how to use the package, and installation instructions.
