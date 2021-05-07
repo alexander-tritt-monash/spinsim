@@ -64,7 +64,7 @@ class IntegrationMethod(Enum):
     Euler integration method.
     """
 
-    HALJ_STEP = "half_step"
+    HALF_STEP = "half_step"
     """
     Integration method from AtomicPy. Makes two Euler integration steps, one sampling the field from the start of the time step, one sampling the field from the end of the time step. The equivalent of the trapezoidal method.
     """
@@ -308,11 +308,11 @@ class Simulator:
 
         Parameters:
 
-        * **field_modifier** (:obj:`float`) - The input to the `get_field` function supplied by the user. Modifies the field function so the integrator can be used for many experiments, without the need for slow recompilation. For example, if the `field_modifier` is used to define the bias field strength in `get_field`, then one can run many simulations, sweeping through bias values, by calling this method multiple times, each time varying `field_modifier`.   
+        * **sweep_parameter** (:obj:`float`) - The input to the `get_field` function supplied by the user. Modifies the field function so the integrator can be used for many experiments, without the need for slow recompilation. For example, if the `sweep_parameter` is used to define the bias field strength in `get_field`, then one can run many simulations, sweeping through bias values, by calling this method multiple times, each time varying `sweep_parameter`.   
         * **time_coarse**   (:obj:`numpy.ndarray` of :obj:`numpy.float64` (time_index)) - The times that `state` was evaluated at.
         * **time_end_points** (:obj:`numpy.ndarray` of :obj:`numpy.float64` (start/end)) - The time offset that the experiment is to start at, and the time that the experiment is to finish at. Measured in s.
-        * **time_step_fine** (:obj:`float`) - The integration time step. Measured in s.
-        * **time_step_coarse** (:obj:`float`) - The sample resolution of the output timeseries for the state. Must be a whole number multiple of `time_step_fine`. Measured in s.
+        * **time_step_integration** (:obj:`float`) - The integration time step. Measured in s.
+        * **time_step_output** (:obj:`float`) - The sample resolution of the output timeseries for the state. Must be a whole number multiple of `time_step_integration`. Measured in s.
         * **time_evolution_coarse** (:obj:`numpy.ndarray` of :obj:`numpy.float128` (time_index, y_index, x_index)) - The evaluated time evolution operator between each time step. See :ref:`architecture` for some information.
     spin_calculator : :obj:`callable`
         Calculates the expected spin projection (Bloch vector) over time for a given time series of a quantum state. This :obj:`callable` is passed to the :obj:`Results` object returned from :func:`Simulator.evaluate()`, and is executed there just in time if the `spin` property is needed. Compiled for chosen device on object constrution.
@@ -454,7 +454,7 @@ class Simulator:
         if integration_method == IntegrationMethod.MAGNUS_CF4:
             sample_index_max = 3
             sample_index_end = 4
-        elif integration_method == IntegrationMethod.HALJ_STEP:
+        elif integration_method == IntegrationMethod.HALF_STEP:
             sample_index_max = 3
             sample_index_end = 4
         elif integration_method == IntegrationMethod.MIDPOINT_SAMPLE:
@@ -513,75 +513,75 @@ class Simulator:
 
         if integration_method == IntegrationMethod.MAGNUS_CF4:
             @jit_device_template("(float64, float64, float64, float64, float64[:, :], float64, complex128[:])")
-            def get_field_integration_magnus_cf4(field_modifier, time_fine, time_coarse, time_step_fine, field_sample, rotating_wave, rotating_wave_winding):
-                time_sample = ((time_fine + 0.5*time_step_fine*(1 - 1/sqrt3)) - time_coarse)
+            def get_field_integration_magnus_cf4(sweep_parameter, time_fine, time_coarse, time_step_integration, field_sample, rotating_wave, rotating_wave_winding):
+                time_sample = ((time_fine + 0.5*time_step_integration*(1 - 1/sqrt3)) - time_coarse)
                 rotating_wave_winding[0] = math.cos(math.tau*rotating_wave*time_sample) + 1j*math.sin(math.tau*rotating_wave*time_sample)
                 time_sample += time_coarse
-                get_field_jit(time_sample, field_modifier, field_sample[0, :])
+                get_field_jit(time_sample, sweep_parameter, field_sample[0, :])
 
-                time_sample = ((time_fine + 0.5*time_step_fine*(1 + 1/sqrt3)) - time_coarse)
+                time_sample = ((time_fine + 0.5*time_step_integration*(1 + 1/sqrt3)) - time_coarse)
                 rotating_wave_winding[1] = math.cos(math.tau*rotating_wave*time_sample) + 1j*math.sin(math.tau*rotating_wave*time_sample)
                 time_sample += time_coarse
-                get_field_jit(time_sample, field_modifier, field_sample[1, :])
+                get_field_jit(time_sample, sweep_parameter, field_sample[1, :])
 
             @jit_device_template("(complex128[:, :], complex128[:, :], float64[:, :], float64, float64, complex128[:])")
-            def append_exponentiation_integration_magnus_cf4(time_evolution_fine, time_evolution_coarse, field_sample, time_step_fine, rotating_wave, rotating_wave_winding):
+            def append_exponentiation_integration_magnus_cf4(time_evolution_fine, time_evolution_coarse, field_sample, time_step_integration, rotating_wave, rotating_wave_winding):
                 transform_frame(field_sample[0, :], rotating_wave, rotating_wave_winding[0])
                 transform_frame(field_sample[1, :], rotating_wave, rotating_wave_winding[1])
 
                 w0 = (1.5 + sqrt3)/6
                 w1 = (1.5 - sqrt3)/6
                 
-                field_sample[2, 0] = math.tau*time_step_fine*(w0*field_sample[0, 0] + w1*field_sample[1, 0])
-                field_sample[2, 1] = math.tau*time_step_fine*(w0*field_sample[0, 1] + w1*field_sample[1, 1])
-                field_sample[2, 2] = math.tau*time_step_fine*(w0*field_sample[0, 2] + w1*field_sample[1, 2])
+                field_sample[2, 0] = math.tau*time_step_integration*(w0*field_sample[0, 0] + w1*field_sample[1, 0])
+                field_sample[2, 1] = math.tau*time_step_integration*(w0*field_sample[0, 1] + w1*field_sample[1, 1])
+                field_sample[2, 2] = math.tau*time_step_integration*(w0*field_sample[0, 2] + w1*field_sample[1, 2])
                 if dimension > 2:
-                    field_sample[2, 3] = math.tau*time_step_fine*(w0*field_sample[0, 3] + w1*field_sample[1, 3])
+                    field_sample[2, 3] = math.tau*time_step_integration*(w0*field_sample[0, 3] + w1*field_sample[1, 3])
 
                 append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_coarse)
 
-                field_sample[2, 0] = math.tau*time_step_fine*(w1*field_sample[0, 0] + w0*field_sample[1, 0])
-                field_sample[2, 1] = math.tau*time_step_fine*(w1*field_sample[0, 1] + w0*field_sample[1, 1])
-                field_sample[2, 2] = math.tau*time_step_fine*(w1*field_sample[0, 2] + w0*field_sample[1, 2])
+                field_sample[2, 0] = math.tau*time_step_integration*(w1*field_sample[0, 0] + w0*field_sample[1, 0])
+                field_sample[2, 1] = math.tau*time_step_integration*(w1*field_sample[0, 1] + w0*field_sample[1, 1])
+                field_sample[2, 2] = math.tau*time_step_integration*(w1*field_sample[0, 2] + w0*field_sample[1, 2])
                 if dimension > 2:
-                    field_sample[2, 3] = math.tau*time_step_fine*(w1*field_sample[0, 3] + w0*field_sample[1, 3])
+                    field_sample[2, 3] = math.tau*time_step_integration*(w1*field_sample[0, 3] + w0*field_sample[1, 3])
 
                 append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_coarse)
 
             get_field_integration = get_field_integration_magnus_cf4
             append_exponentiation_integration = append_exponentiation_integration_magnus_cf4
 
-        elif integration_method == IntegrationMethod.HALJ_STEP:
+        elif integration_method == IntegrationMethod.HALF_STEP:
             @jit_device_template("(float64, float64, float64, float64, float64[:, :], float64, complex128[:])")
-            def get_field_integration_half_step(field_modifier, time_fine, time_coarse, time_step_fine, field_sample, rotating_wave, rotating_wave_winding):
+            def get_field_integration_half_step(sweep_parameter, time_fine, time_coarse, time_step_integration, field_sample, rotating_wave, rotating_wave_winding):
                 time_sample = time_fine - time_coarse
                 rotating_wave_winding[0] = math.cos(math.tau*rotating_wave*time_sample) + 1j*math.sin(math.tau*rotating_wave*time_sample)
                 time_sample += time_coarse
-                get_field_jit(time_sample, field_modifier, field_sample[0, :])
+                get_field_jit(time_sample, sweep_parameter, field_sample[0, :])
 
-                time_sample = time_fine + time_step_fine - time_coarse
+                time_sample = time_fine + time_step_integration - time_coarse
                 rotating_wave_winding[1] = math.cos(math.tau*rotating_wave*time_sample) + 1j*math.sin(math.tau*rotating_wave*time_sample)
                 time_sample += time_coarse
-                get_field_jit(time_sample, field_modifier, field_sample[1, :])
+                get_field_jit(time_sample, sweep_parameter, field_sample[1, :])
 
             @jit_device_template("(complex128[:, :], complex128[:, :], float64[:, :], float64, float64, complex128[:])")
-            def append_exponentiation_integration_half_step(time_evolution_fine, time_evolution_coarse, field_sample, time_step_fine, rotating_wave, rotating_wave_winding):
+            def append_exponentiation_integration_half_step(time_evolution_fine, time_evolution_coarse, field_sample, time_step_integration, rotating_wave, rotating_wave_winding):
                 transform_frame(field_sample[0, :], rotating_wave, rotating_wave_winding[0])
                 transform_frame(field_sample[1, :], rotating_wave, rotating_wave_winding[1])
                 
-                field_sample[2, 0] = math.tau*time_step_fine*field_sample[0, 0]/2
-                field_sample[2, 1] = math.tau*time_step_fine*field_sample[0, 1]/2
-                field_sample[2, 2] = math.tau*time_step_fine*field_sample[0, 2]/2
+                field_sample[2, 0] = math.tau*time_step_integration*field_sample[0, 0]/2
+                field_sample[2, 1] = math.tau*time_step_integration*field_sample[0, 1]/2
+                field_sample[2, 2] = math.tau*time_step_integration*field_sample[0, 2]/2
                 if dimension > 2:
-                    field_sample[2, 3] = math.tau*time_step_fine*field_sample[0, 3]/2
+                    field_sample[2, 3] = math.tau*time_step_integration*field_sample[0, 3]/2
 
                 append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_coarse)
 
-                field_sample[2, 0] = math.tau*time_step_fine*field_sample[1, 0]/2
-                field_sample[2, 1] = math.tau*time_step_fine*field_sample[1, 1]/2
-                field_sample[2, 2] = math.tau*time_step_fine*field_sample[1, 2]/2
+                field_sample[2, 0] = math.tau*time_step_integration*field_sample[1, 0]/2
+                field_sample[2, 1] = math.tau*time_step_integration*field_sample[1, 1]/2
+                field_sample[2, 2] = math.tau*time_step_integration*field_sample[1, 2]/2
                 if dimension > 2:
-                    field_sample[2, 3] = math.tau*time_step_fine*field_sample[1, 3]/2
+                    field_sample[2, 3] = math.tau*time_step_integration*field_sample[1, 3]/2
 
                 append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_coarse)
 
@@ -590,21 +590,21 @@ class Simulator:
 
         elif integration_method == IntegrationMethod.MIDPOINT_SAMPLE:
             @jit_device_template("(float64, float64, float64, float64, float64[:, :], float64, complex128[:])")
-            def get_field_integration_midpoint(field_modifier, time_fine, time_coarse, time_step_fine, field_sample, rotating_wave, rotating_wave_winding):
-                time_sample = time_fine + 0.5*time_step_fine - time_coarse
+            def get_field_integration_midpoint(sweep_parameter, time_fine, time_coarse, time_step_integration, field_sample, rotating_wave, rotating_wave_winding):
+                time_sample = time_fine + 0.5*time_step_integration - time_coarse
                 rotating_wave_winding[0] = math.cos(math.tau*rotating_wave*time_sample) + 1j*math.sin(math.tau*rotating_wave*time_sample)
                 time_sample += time_coarse
-                get_field_jit(time_sample, field_modifier, field_sample[0, :])
+                get_field_jit(time_sample, sweep_parameter, field_sample[0, :])
 
             @jit_device_template("(complex128[:, :], complex128[:, :], float64[:, :], float64, float64, complex128[:])")
-            def append_exponentiation_integration_midpoint(time_evolution_fine, time_evolution_coarse, field_sample, time_step_fine, rotating_wave, rotating_wave_winding):
+            def append_exponentiation_integration_midpoint(time_evolution_fine, time_evolution_coarse, field_sample, time_step_integration, rotating_wave, rotating_wave_winding):
                 transform_frame(field_sample[0, :], rotating_wave, rotating_wave_winding[0])
                 
-                field_sample[0, 0] = math.tau*time_step_fine*field_sample[0, 0]
-                field_sample[0, 1] = math.tau*time_step_fine*field_sample[0, 1]
-                field_sample[0, 2] = math.tau*time_step_fine*field_sample[0, 2]
+                field_sample[0, 0] = math.tau*time_step_integration*field_sample[0, 0]
+                field_sample[0, 1] = math.tau*time_step_integration*field_sample[0, 1]
+                field_sample[0, 2] = math.tau*time_step_integration*field_sample[0, 2]
                 if dimension > 2:
-                    field_sample[0, 3] = math.tau*time_step_fine*field_sample[0, 3]
+                    field_sample[0, 3] = math.tau*time_step_integration*field_sample[0, 3]
 
                 append_exponentiation(field_sample[0, :], time_evolution_fine, time_evolution_coarse)
 
@@ -612,7 +612,7 @@ class Simulator:
             append_exponentiation_integration = append_exponentiation_integration_midpoint
 
         @jit_device_template("(int64, float64[:], float64, float64, float64[:], complex128[:, :, :], float64)")
-        def get_time_evolution_loop(time_index, time_coarse, time_step_coarse, time_step_fine, time_end_points, time_evolution_coarse, field_modifier):
+        def get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_coarse, sweep_parameter):
             # Declare variables
             if device_index == 0:
                 time_evolution_fine = np.empty((dimension, dimension), dtype = np.complex128)
@@ -633,29 +633,29 @@ class Simulator:
                 rotating_wave_winding_group = roc.shared.array((threads_per_block, sample_index_end), dtype = np.complex128)
                 rotating_wave_winding = rotating_wave_winding_group[roc.get_local_id(1), :]
             
-            time_coarse[time_index] = time_end_points[0] + time_step_coarse*time_index
+            time_coarse[time_index] = time_end_points[0] + time_step_output*time_index
             time_fine = time_coarse[time_index]
 
             # Initialise time evolution operator to 1
             set_to_one(time_evolution_coarse[time_index, :])
             field_sample[0, 2] = 0
             if use_rotating_frame:
-                time_sample = time_coarse[time_index] + time_step_coarse/2
-                get_field_jit(time_sample, field_modifier, field_sample[0, :])
+                time_sample = time_coarse[time_index] + time_step_output/2
+                get_field_jit(time_sample, sweep_parameter, field_sample[0, :])
             rotating_wave = field_sample[0, 2]
             if dimension == 2:
                 rotating_wave /= 2
 
             # For every fine step
-            for time_fine_index in range(math.floor(time_step_coarse/time_step_fine + 0.5)):
-                get_field_integration(field_modifier, time_fine, time_coarse[time_index], time_step_fine, field_sample, rotating_wave, rotating_wave_winding)
-                append_exponentiation_integration(time_evolution_fine, time_evolution_coarse[time_index, :], field_sample, time_step_fine, rotating_wave, rotating_wave_winding)
+            for time_fine_index in range(math.floor(time_step_output/time_step_integration + 0.5)):
+                get_field_integration(sweep_parameter, time_fine, time_coarse[time_index], time_step_integration, field_sample, rotating_wave, rotating_wave_winding)
+                append_exponentiation_integration(time_evolution_fine, time_evolution_coarse[time_index, :], field_sample, time_step_integration, rotating_wave, rotating_wave_winding)
 
-                time_fine += time_step_fine
+                time_fine += time_step_integration
 
             if use_rotating_frame:
                 # Take out of rotating frame
-                rotating_wave_winding[0] = math.cos(math.tau*rotating_wave*time_step_coarse) + 1j*math.sin(math.tau*rotating_wave*time_step_coarse)
+                rotating_wave_winding[0] = math.cos(math.tau*rotating_wave*time_step_output) + 1j*math.sin(math.tau*rotating_wave*time_step_output)
 
                 time_evolution_coarse[time_index, 0, 0] /= rotating_wave_winding[0]
                 time_evolution_coarse[time_index, 0, 1] /= rotating_wave_winding[0]
@@ -670,21 +670,21 @@ class Simulator:
                     time_evolution_coarse[time_index, 1, 1] *= rotating_wave_winding[0]
 
         @jit_host("(float64, float64[:], float64[:], float64, float64, complex128[:, :, :])", max_registers)
-        def get_time_evolution(field_modifier, time_coarse, time_end_points, time_step_fine, time_step_coarse, time_evolution_coarse):
+        def get_time_evolution(sweep_parameter, time_coarse, time_end_points, time_step_integration, time_step_output, time_evolution_coarse):
             """
             Find the stepwise time evolution opperator.
 
             Parameters
             ----------
-            field_modifier : :obj:`float`
+            sweep_parameter : :obj:`float`
 
             time_coarse : :class:`numpy.ndarray` of :class:`numpy.float64` (time_index)
                 A coarse grained list of time samples that the time evolution operator is found for. In units of s. This is an output, so use an empty :class:`numpy.ndarray` with :func:`numpy.empty()`, or declare a :class:`numpy.ndarray` using :func:`numba.cuda.device_array_like()`.
             time_end_points : :class:`numpy.ndarray` of :class:`numpy.float64` (start time (0) or end time (1))
                 The time values for when the experiment is to start and finishes. In units of s.
-            time_step_fine : :obj:`float`
+            time_step_integration : :obj:`float`
                 The time step used within the integration algorithm. In units of s.
-            time_step_coarse : :obj:`float`
+            time_step_output : :obj:`float`
                 The time difference between each element of `time_coarse`. In units of s. Determines the sample rate of the outputs `time_coarse` and `time_evolution_coarse`.
             time_evolution_coarse : :class:`numpy.ndarray` of :class:`numpy.complex128` (time_index, bra_state_index, ket_state_index)
                 Time evolution operator (matrix) between the current and next timesteps, for each time sampled. See :math:`U(t)` in :ref:`overview_of_simulation_method`. This is an output, so use an empty :class:`numpy.ndarray` with :func:`numpy.empty()`, or declare a :class:`numpy.ndarray` using :func:`numba.cuda.device_array_like()`.
@@ -692,17 +692,17 @@ class Simulator:
 
             if device_index == 0:
                 for time_index in nb.prange(time_coarse.size):
-                    get_time_evolution_loop(time_index, time_coarse, time_step_coarse, time_step_fine, time_end_points, time_evolution_coarse, field_modifier)
+                    get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_coarse, sweep_parameter)
             elif device_index == 1:
                 # Run calculation for each coarse timestep in parallel
                 time_index = cuda.grid(1)
                 if time_index < time_coarse.size:
-                    get_time_evolution_loop(time_index, time_coarse, time_step_coarse, time_step_fine, time_end_points, time_evolution_coarse, field_modifier)
+                    get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_coarse, sweep_parameter)
             elif device_index == 2:
                 # Run calculation for each coarse timestep in parallel
                 time_index = roc.get_global_id(1)
                 if time_index < time_coarse.size:
-                    get_time_evolution_loop(time_index, time_coarse, time_step_coarse, time_step_fine, time_end_points, time_evolution_coarse, field_modifier)
+                    get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_coarse, sweep_parameter)
             return
 
         @jit_host("(complex128[:, :], float64[:, :])", max_registers = max_registers)
@@ -797,22 +797,22 @@ class Simulator:
         self.get_time_evolution_raw = get_time_evolution
         self.spin_calculator = spin_calculator
 
-    def evaluate(self, field_modifier, time_start, time_end, time_step_fine, time_step_coarse, state_init):
+    def evaluate(self, sweep_parameter, time_start, time_end, time_step_integration, time_step_output, state_init):
         """
         Integrates the time dependent Schroedinger equation and returns the quantum state of the spin system over time.
 
         Parameters
         ----------
-        field_modifier : :obj:`float`
-            The input to the `get_field` function supplied by the user. Modifies the field function so the integrator can be used for many experiments, without the need for slow recompilation. For example, if the `field_modifier` is used to define the bias field strength in `get_field`, then one can run many simulations, sweeping through bias values, by calling this method multiple times, each time varying `field_modifier`.
+        sweep_parameter : :obj:`float`
+            The input to the `get_field` function supplied by the user. Modifies the field function so the integrator can be used for many experiments, without the need for slow recompilation. For example, if the `sweep_parameter` is used to define the bias field strength in `get_field`, then one can run many simulations, sweeping through bias values, by calling this method multiple times, each time varying `sweep_parameter`.
         time_start : :obj:`float`
             The time offset that the experiment is to start at. Measured in s.
         time_end : :obj:`float`
             The time that the experiment is to finish at. Measured in s. The duration of the experiment is `time_end - time_start`.
-        time_step_fine : :obj:`float`
+        time_step_integration : :obj:`float`
             The integration time step. Measured in s.
-        time_step_coarse : :obj:`float`
-            The sample resolution of the output timeseries for the state. Must be a whole number multiple of `time_step_fine`. Measured in s.
+        time_step_output : :obj:`float`
+            The sample resolution of the output timeseries for the state. Must be a whole number multiple of `time_step_integration`. Measured in s.
         state_init : :obj:`numpy.ndarray` of :obj:`numpy.complex128` (magnetic_quantum_number)
             The initial quantum state of the spin system, written in terms of the eigenstates of the spin projection operator in the z direction.
 
@@ -821,15 +821,20 @@ class Simulator:
         results : :obj:`Results`
             An object containing the results of the simulation.
         """
+        if math.fabs(time_step_output/time_step_integration - round(time_step_output/time_step_integration)) > 1e-6:
+            print(f"\033[31mspinsim warning: time_step_output not an integer multiple of time_step_integration. Resetting time_step_integration to {time_step_output/round(time_step_output/time_step_integration):e8.4}.\033[0m\n")
+        time_step_integration = time_step_output/round(time_step_output/time_step_integration)
+
+
         time_end_points = np.asarray([time_start, time_end], np.float64)
         state_init = np.asarray(state_init, np.complex128)
 
-        time_index_max = int((time_end_points[1] - time_end_points[0])/time_step_coarse)
+        time_index_max = int((time_end_points[1] - time_end_points[0])/time_step_output)
         if self.device.index == 0:
             time = np.empty(time_index_max, np.float64)
             time_evolution_coarse = np.empty((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
 
-            self.get_time_evolution_raw(field_modifier, time, time_end_points, time_step_fine, time_step_coarse, time_evolution_coarse)
+            self.get_time_evolution_raw(sweep_parameter, time, time_end_points, time_step_integration, time_step_output, time_evolution_coarse)
 
         elif self.device == Device.CUDA:
             time = cuda.device_array(time_index_max, np.float64)
@@ -837,7 +842,7 @@ class Simulator:
 
             blocks_per_grid = (time.size + (self.threads_per_block - 1)) // self.threads_per_block
             try:
-                self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](field_modifier, time, time_end_points, time_step_fine, time_step_coarse, time_evolution_coarse)
+                self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](sweep_parameter, time, time_end_points, time_step_integration, time_step_output, time_evolution_coarse)
             except:
                 print("\033[31mspinsim error: numba.cuda could not jit get_field function into a cuda device function.\033[0m\n")
                 raise
@@ -851,7 +856,7 @@ class Simulator:
 
             blocks_per_grid = (time.size + (self.threads_per_block - 1)) // self.threads_per_block
             try:
-                self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](field_modifier, time, time_end_points, time_step_fine, time_step_coarse, time_evolution_coarse)
+                self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](sweep_parameter, time, time_end_points, time_step_integration, time_step_output, time_evolution_coarse)
             except:
                 print("\033[31mspinsim error: numba.roc could not jit get_field function into a roc device function.\033[0m\n")
                 raise

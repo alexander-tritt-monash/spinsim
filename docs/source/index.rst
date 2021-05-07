@@ -16,7 +16,7 @@ Bellow is a basic example of evaluating the state and bloch vector for simulatin
    import numpy as np
    import matplotlib.pyplot as plt
 
-   def get_field_larmor(time_sample, field_modifier, field_sample):
+   def get_field_larmor(time_sample, sweep_parameter, field_sample):
       field_sample[0] = 0            # Zero field in x direction
       field_sample[1] = 0            # Zero field in y direction
       field_sample[2] = 1000         # Split spin z eigenstates by 1kHz

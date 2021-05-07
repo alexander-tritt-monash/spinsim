@@ -15,7 +15,7 @@ Full code
    import numpy as np
    import matplotlib.pyplot as plt
 
-   def get_field_larmor(time_sample, field_modifier, field_sample):
+   def get_field_larmor(time_sample, sweep_parameter, field_sample):
       field_sample[0] = 0            # Zero field in x direction
       field_sample[1] = 0            # Zero field in y direction
       field_sample[2] = 1000         # Split spin z eigenstates by 1kHz
@@ -97,12 +97,12 @@ Let's pick :math:`f_L = 1\mathrm{kHz}`. We can write this as a python function a
 .. code-block:: python
 
    # Define a numba.cuda compatible source sampling function
-   def get_field_larmor(time_sample, field_modifier, field_sample):
+   def get_field_larmor(time_sample, sweep_parameter, field_sample):
       field_sample[0] = 0            # Zero source in x direction
       field_sample[1] = 0            # Zero source in y direction
       field_sample[2] = 1000         # Split spin z eigenstates by 1kHz
 
-This function has three inputs. `time_sample` and `field_sample` are the equivalent of :math:`t` and :math:`(f_x, f_y, f_z)` from before. In particular, `field_sample` is a numpy array of doubles, with indices 0, 1, 2 representing for indices :math:`x, y, z` respectively. `field_modifier` is a secondary input to the function, which we will explore in the next example.
+This function has three inputs. `time_sample` and `field_sample` are the equivalent of :math:`t` and :math:`(f_x, f_y, f_z)` from before. In particular, `field_sample` is a numpy array of doubles, with indices 0, 1, 2 representing for indices :math:`x, y, z` respectively. `sweep_parameter` is a secondary input to the function, which we will explore in the next example.
 
 We can then construct an object of :class:`spinsim.Simulator` to return an integrator with this specific function built in.
 
@@ -122,7 +122,7 @@ By default, the :class:`spinsim.Simulator` instance checks whether or not Cuda d
 
 The constructor of :class:`spinsim.Simulator` contains many other options that can be used to customise which features are used by the integrator.
 
-The next step is to define some simulation parameters, as well as the input and output. Firstly, we must decide on some time steps that are to be used. `time_step_coarse` defines the resolution of the output time series for the time evolution operator, state and spin. `time_step_fine` determines the internal time step of the integrator. `time_step_coarse` must be an integer multiple of `time_step_fine`. We also need to define the times when the experiment starts and ends. Below we have chosen to have a `time_step_fine` of 10ns, a `time_step_coarse` of 100ns, a start time of 0ms, and an end time of 100ms. We also need to define an initial state for the spin system. We choose an eigenstate of the :math:`J_x` operator, as we expect that to precess as it evolves through time. Now that everything is set up, the time evolution operator can be found between each sample using our object `simulator_larmor`.
+The next step is to define some simulation parameters, as well as the input and output. Firstly, we must decide on some time steps that are to be used. `time_step_output` defines the resolution of the output time series for the time evolution operator, state and spin. `time_step_integration` determines the internal time step of the integrator. `time_step_output` must be an integer multiple of `time_step_integration`. We also need to define the times when the experiment starts and ends. Below we have chosen to have a `time_step_integration` of 10ns, a `time_step_output` of 100ns, a start time of 0ms, and an end time of 100ms. We also need to define an initial state for the spin system. We choose an eigenstate of the :math:`J_x` operator, as we expect that to precess as it evolves through time. Now that everything is set up, the time evolution operator can be found between each sample using our object `simulator_larmor`.
 
 We can now run the simulation.
 
@@ -166,11 +166,11 @@ Full code
    import matplotlib.pyplot as plt
    import math
 
-   def get_field_rabi(time_sample, field_modifier, field_sample):
+   def get_field_rabi(time_sample, sweep_parameter, field_sample):
       # Dress atoms from the x direction, Rabi flopping at 1kHz
-      field_sample[0] = 2000*math.cos(math.tau*20e3*field_modifier*time_sample)
+      field_sample[0] = 2000*math.cos(math.tau*20e3*sweep_parameter*time_sample)
       field_sample[1] = 0                        # Zero field in y direction
-      field_sample[2] = 20e3*field_modifier     # Split spin z eigenstates by 700kHz
+      field_sample[2] = 20e3*sweep_parameter     # Split spin z eigenstates by 700kHz
       field_sample[3] = 0                        # Zero quadratic shift, found in spin one systems
 
    simulator_rabi = spinsim.Simulator(get_field_rabi, spinsim.SpinQuantumNumber.ONE)
@@ -257,7 +257,7 @@ Just as before, we must define a source function, this time being time dependent
 
 .. code-block:: python
 
-   def get_field_rabi(time_sample, field_modifier, field_sample):
+   def get_field_rabi(time_sample, sweep_parameter, field_sample):
       # Dress atoms from the x direction, Rabi flopping at 1kHz
       field_sample[0] = 2000*math.cos(math.tau*20e3*time_sample)
       field_sample[1] = 0      # Zero source in y direction
@@ -271,25 +271,25 @@ This time there is a fourth entry in `field_sample`, which represents the quadra
 
    .. code-block:: python
 
-      def get_field_rabi(time_sample, field_modifier, field_sample):
+      def get_field_rabi(time_sample, sweep_parameter, field_sample):
          # Dress atoms from the x direction, Rabi flopping at 1kHz
          field_sample[0] = 2000*np.cos(np.tau*20e3*time_sample)
          field_sample[1] = 0       # Zero source in y direction
          field_sample[2] = 20e3    # Split spin z eigenstates by 20kHz
          field_sample[3] = 0       # Zero quadratic shift, found in spin one systems
 
-Before we move on, suppose that we want to execute multiple similar simulations. For example, we could run the current simulation, then one that is exactly the same, but with double the Larmor frequency :math:`f_L`. One could do this by hard coding another source function with this change and then compiling another solver, but this takes time and is inefficient. Instead, we can use the parameter `field_modifier`.
+Before we move on, suppose that we want to execute multiple similar simulations. For example, we could run the current simulation, then one that is exactly the same, but with double the Larmor frequency :math:`f_L`. One could do this by hard coding another source function with this change and then compiling another solver, but this takes time and is inefficient. Instead, we can use the parameter `sweep_parameter`.
 
 .. code-block:: python
 
-   def get_field_rabi(time_sample, field_modifier, field_sample):
+   def get_field_rabi(time_sample, sweep_parameter, field_sample):
       # Dress atoms from the x direction, Rabi flopping at 1kHz
-      field_sample[0] = 2000*math.cos(math.tau*20e3*field_modifier*time_sample)
+      field_sample[0] = 2000*math.cos(math.tau*20e3*sweep_parameter*time_sample)
       field_sample[1] = 0                        # Zero source in y direction
-      field_sample[2] = 20e3*field_modifier     # Split spin z eigenstates by 20kHz
+      field_sample[2] = 20e3*sweep_parameter     # Split spin z eigenstates by 20kHz
       field_sample[3] = 0                        # Zero quadratic shift
 
-The value of each `field_modifier` can be input whenever the integration function is called. In general, this can be used to sweep through values for any number of simulations, saving compile time.
+The value of each `sweep_parameter` can be input whenever the integration function is called. In general, this can be used to sweep through values for any number of simulations, saving compile time.
 
 Let's build our simulator object, now spin one.
 
@@ -298,7 +298,7 @@ Let's build our simulator object, now spin one.
    # Return a solver which uses this function
    simulator_rabi = spinsim.Simulator(get_field_rabi, spinsim.SpinQuantumNumber.ONE)
 
-We set up some of the parameters as before, and we are now ready to execute. Note that, `field_modifier` is the first parameter. Here it is set to 1 for a Larmor frequency :math:`f_L` of 20kHz.
+We set up some of the parameters as before, and we are now ready to execute. Note that, `sweep_parameter` is the first parameter. Here it is set to 1 for a Larmor frequency :math:`f_L` of 20kHz.
 
 .. code-block:: python
 
@@ -327,7 +327,7 @@ which gives
 
 Notice the spin z projection cycling (Rabi flopping) at a rate of 1KHz, while the spin x and y projections are cycling between each other (Larmor precessing) at a rate of 20kHz. Using the rotating wave approximation, the spin z projection can be thought of as a sine wave. However, when these approximations are not used, one obtains these artifacts that we see on the spin z projection, known as beyond rotating wave effects.
 
-Finally, let's run another experiment using the same compiled function. This will run faster than last time, as it does not need to be compiled a second time. Notice that here we set `field_modifier` to 2, which should double the Larmor frequency :math:`f_L`.
+Finally, let's run another experiment using the same compiled function. This will run faster than last time, as it does not need to be compiled a second time. Notice that here we set `sweep_parameter` to 2, which should double the Larmor frequency :math:`f_L`.
 
 .. code-block:: python
 
