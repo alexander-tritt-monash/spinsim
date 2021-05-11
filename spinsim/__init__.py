@@ -325,7 +325,7 @@ class Simulator:
         
         * **spin** (:obj:`numpy.ndarray` of :obj:`numpy.float64` (time_index, spatial_direction)) - The expected spin projection (Bloch vector) over time.
     """
-    def __init__(self, get_field, spin_quantum_number, device = None, exponentiation_method = None, use_rotating_frame = True, integration_method = IntegrationMethod.MAGNUS_CF4, trotter_cutoff = 28, threads_per_block = 64, max_registers = 63):
+    def __init__(self, get_field, spin_quantum_number, device = None, exponentiation_method = None, use_rotating_frame = True, integration_method = IntegrationMethod.MAGNUS_CF4, trotter_cutoff = 32, threads_per_block = 64, max_registers = 63):
         """
         .. _Achieved Occupancy: https://docs.nvidia.com/gameworks/content/developertools/desktop/analysis/report/cudaexperiments/kernellevel/achievedoccupancy.htm
 
@@ -822,7 +822,7 @@ class Simulator:
             An object containing the results of the simulation.
         """
         if math.fabs(time_step_output/time_step_integration - round(time_step_output/time_step_integration)) > 1e-6:
-            print(f"\033[31mspinsim warning: time_step_output not an integer multiple of time_step_integration. Resetting time_step_integration to {time_step_output/round(time_step_output/time_step_integration):e8.4}.\033[0m\n")
+            print(f"\033[33mspinsim warning: time_step_output not an integer multiple of time_step_integration. Resetting time_step_integration to {time_step_output/round(time_step_output/time_step_integration):8.4e}.\033[0m\n")
         time_step_integration = time_step_output/round(time_step_output/time_step_integration)
 
 
@@ -1328,22 +1328,25 @@ class Utilities:
                     hyper_cube_amount = 0
                 precision = 4**hyper_cube_amount
                 
-                x = field_sample[0]/(2*precision)
-                y = field_sample[1]/(2*precision)
-                z = field_sample[2]/(2*precision)
+                a = math.sqrt(field_sample[0]*field_sample[0] + field_sample[1]*field_sample[1])
+                ep = (field_sample[0] + 1j*field_sample[1])/a
+                a = a/precision
 
-                cx = math.cos(x)
-                sx = math.sin(x)
-                cy = math.cos(y)
-                sy = math.sin(y)
+                Ca = math.cos(a/2)
 
-                cisz = math.cos(z) + 1j*math.sin(z)
+                Sa = -1j*math.sin(a/2)
 
-                result[0, 0] = (cx*cy - 1j*sx*sy)/cisz
-                result[1, 0] = (cx*sy -1j*sx*cy)/cisz
+                ez = field_sample[2]/(2*precision)
+                ez = math.cos(ez) + 1j*math.sin(ez)
 
-                result[0, 1] = -(cx*sy + 1j*sx*cy)*cisz
-                result[1, 1] = (cx*cy + 1j*sx*sy)*cisz
+                eq = field_sample[3]/(6*precision)
+                eq = math.cos(eq) + 1j*math.sin(eq)
+
+                result[0, 0] = Ca/ez
+                result[1, 0] = Sa*ep
+
+                result[0, 1] = Sa/ep
+                result[1, 1] = Ca*ez
 
                 if device_index == 0:
                     temporary = np.empty((2, 2), dtype = np.complex128)
@@ -1355,6 +1358,41 @@ class Utilities:
                 for power_index in range(hyper_cube_amount):
                     matrix_multiply(result, result, temporary)
                     matrix_multiply(temporary, temporary, result)
+
+            # @jit_device
+            # def matrix_exponential_lie_trotter(field_sample, result, trotter_cutoff):
+            #     hyper_cube_amount = math.ceil(trotter_cutoff/2)
+            #     if hyper_cube_amount < 0:
+            #         hyper_cube_amount = 0
+            #     precision = 4**hyper_cube_amount
+                
+            #     x = field_sample[0]/(2*precision)
+            #     y = field_sample[1]/(2*precision)
+            #     z = field_sample[2]/(2*precision)
+
+            #     cx = math.cos(x)
+            #     sx = math.sin(x)
+            #     cy = math.cos(y)
+            #     sy = math.sin(y)
+
+            #     cisz = math.cos(z) + 1j*math.sin(z)
+
+            #     result[0, 0] = (cx*cy - 1j*sx*sy)/cisz
+            #     result[1, 0] = (cx*sy -1j*sx*cy)/cisz
+
+            #     result[0, 1] = -(cx*sy + 1j*sx*cy)*cisz
+            #     result[1, 1] = (cx*cy + 1j*sx*sy)*cisz
+
+            #     if device_index == 0:
+            #         temporary = np.empty((2, 2), dtype = np.complex128)
+            #     elif device_index == 1:
+            #         temporary = cuda.local.array((2, 2), dtype = np.complex128)
+            #     elif device_index == 2:
+            #         temporary_group = roc.shared.array((threads_per_block, 2, 2), dtype = np.complex128)
+            #         temporary = temporary_group[roc.get_local_id(1), :, :]
+            #     for power_index in range(hyper_cube_amount):
+            #         matrix_multiply(result, result, temporary)
+            #         matrix_multiply(temporary, temporary, result)
 
         else:
             @jit_device
@@ -1452,30 +1490,35 @@ class Utilities:
                     hyper_cube_amount = 0
                 precision = 4**hyper_cube_amount
                 
-                x = field_sample[0]/precision
-                y = field_sample[1]/precision
-                z = field_sample[2]/precision
-                q = field_sample[3]/precision
+                a = math.sqrt(field_sample[0]*field_sample[0] + field_sample[1]*field_sample[1])
+                ep = (field_sample[0] + 1j*field_sample[1])/a
+                a = a/precision
 
-                cx = math.cos(x)
-                sx = math.sin(x)
-                cy = math.cos(y)
-                sy = math.sin(y)
+                Ca = math.cos(a/2)
 
-                cisz = math.cos(z + q/3) - 1j*math.sin(z + q/3)
-                result[0, 0] = 0.5*cisz*(cx + cy - 1j*sx*sy)
-                result[1, 0] = cisz*(-1j*sx + cx*sy)/sqrt2
-                result[2, 0] = 0.5*cisz*(cx - cy - 1j*sx*sy)
+                Sa = math.sin(a/2)
 
-                cisz = math.cos(2*q/3) + 1j*math.sin(2*q/3)
-                result[0, 1] = cisz*(-sy - 1j*cy*sx)/sqrt2
-                result[1, 1] = cisz*cx*cy
-                result[2, 1] = cisz*(sy - 1j*cy*sx)/sqrt2
+                ca = math.cos(a)
 
-                cisz = math.cos(z - q/3) + 1j*math.sin(z - q/3)
-                result[0, 2] = 0.5*cisz*(cx - cy + 1j*sx*sy)
-                result[1, 2] = cisz*(-1j*sx - cx*sy)/sqrt2
-                result[2, 2] = 0.5*cisz*(cx + cy + 1j*sx*sy)
+                sa = -1j*math.sin(a)/sqrt2
+
+                ez = field_sample[2]/(2*precision)
+                ez = math.cos(ez) + 1j*math.sin(ez)
+
+                eq = field_sample[3]/(6*precision)
+                eq = math.cos(eq) + 1j*math.sin(eq)
+
+                result[0, 0] = (Ca/(eq*ez))*(Ca/(eq*ez))
+                result[1, 0] = sa*eq*ep/ez
+                result[2, 0] = -((Sa*ep/eq)*(Sa*ep/eq))
+
+                result[0, 1] = sa*eq/(ez*ep)
+                result[1, 1] = ca*(eq*eq*eq*eq)
+                result[2, 1] = sa*eq*ez*ep
+
+                result[0, 2] = -((Sa*eq/ep)*(Sa*eq/ep))
+                result[1, 2] = sa*eq*ez/ep
+                result[2, 2] = (Ca*ez/eq)*(Ca*ez/eq)
 
                 if device_index == 0:
                     temporary = np.empty((3, 3), dtype = np.complex128)
@@ -1487,6 +1530,49 @@ class Utilities:
                 for power_index in range(hyper_cube_amount):
                     matrix_multiply(result, result, temporary)
                     matrix_multiply(temporary, temporary, result)
+            
+            # @jit_device
+            # def matrix_exponential_lie_trotter(field_sample, result, trotter_cutoff):
+            #     hyper_cube_amount = math.ceil(trotter_cutoff/2)
+            #     if hyper_cube_amount < 0:
+            #         hyper_cube_amount = 0
+            #     precision = 4**hyper_cube_amount
+                
+            #     x = field_sample[0]/precision
+            #     y = field_sample[1]/precision
+            #     z = field_sample[2]/precision
+            #     q = field_sample[3]/precision
+
+            #     cx = math.cos(x)
+            #     sx = math.sin(x)
+            #     cy = math.cos(y)
+            #     sy = math.sin(y)
+
+            #     cisz = math.cos(z + q/3) - 1j*math.sin(z + q/3)
+            #     result[0, 0] = 0.5*cisz*(cx + cy - 1j*sx*sy)
+            #     result[1, 0] = cisz*(-1j*sx + cx*sy)/sqrt2
+            #     result[2, 0] = 0.5*cisz*(cx - cy - 1j*sx*sy)
+
+            #     cisz = math.cos(2*q/3) + 1j*math.sin(2*q/3)
+            #     result[0, 1] = cisz*(-sy - 1j*cy*sx)/sqrt2
+            #     result[1, 1] = cisz*cx*cy
+            #     result[2, 1] = cisz*(sy - 1j*cy*sx)/sqrt2
+
+            #     cisz = math.cos(z - q/3) + 1j*math.sin(z - q/3)
+            #     result[0, 2] = 0.5*cisz*(cx - cy + 1j*sx*sy)
+            #     result[1, 2] = cisz*(-1j*sx - cx*sy)/sqrt2
+            #     result[2, 2] = 0.5*cisz*(cx + cy + 1j*sx*sy)
+
+            #     if device_index == 0:
+            #         temporary = np.empty((3, 3), dtype = np.complex128)
+            #     elif device_index == 1:
+            #         temporary = cuda.local.array((3, 3), dtype = np.complex128)
+            #     elif device_index == 2:
+            #         temporary_group = roc.shared.array((threads_per_block, 3, 3), dtype = np.complex128)
+            #         temporary = temporary_group[roc.get_local_id(1), :, :]
+            #     for power_index in range(hyper_cube_amount):
+            #         matrix_multiply(result, result, temporary)
+            #         matrix_multiply(temporary, temporary, result)
 
         self.conj = conj
         self.complex_abs = complex_abs
