@@ -47,4 +47,4 @@ Bellow is a basic example of evaluating the state and bloch vector for simulatin
 
 This results in
 
-.. image:: _docs/source/images/example_1_1.png
+.. image:: https://github.com/alexander-tritt-monash/spinsim/blob/master/images/example_1_1.png
