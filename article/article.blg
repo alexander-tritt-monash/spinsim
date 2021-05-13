@@ -9,50 +9,54 @@ Reallocating 'glb_str_ptr' (item size: 4) to 20 items.
 Reallocating 'global_strs' (item size: 1) to 4000000 items.
 Reallocating 'wiz_functions' (item size: 4) to 6000 items.
 Database file #1: spinsim.bib
-Warning--empty author and editor in morris_qcmonkatomicpy_2018
-Warning--missing publisher in morris_qcmonkatomicpy_2018
 Warning--empty author and editor in alexander-tritt-monash_alexander-tritt-monashneural-sense_2020
 Warning--missing publisher in alexander-tritt-monash_alexander-tritt-monashneural-sense_2020
 Warning--empty author and editor in wolfram_research_inc_mathematica_2020
-You've used 20 entries,
+Warning--empty author in noauthor_cuda_2012
+Warning--empty author and editor in noauthor_cuda_2012
+Warning--missing publisher in noauthor_cuda_2012
+Warning--empty author in noauthor_cuda_2013
+Warning--empty author and editor in noauthor_cuda_2013
+Warning--missing publisher in noauthor_cuda_2013
+You've used 21 entries,
             3177 wiz_defined-function locations,
-            803 strings with 10011 characters,
-and the built_in function-call counts, 34963 in all, are:
-= -- 4386
-> -- 218
+            804 strings with 10007 characters,
+and the built_in function-call counts, 34873 in all, are:
+= -- 4360
+> -- 216
 < -- 5
 + -- 151
-- -- 54
-* -- 2920
-:= -- 3796
+- -- 53
+* -- 2913
+:= -- 3777
 add.period$ -- 95
-call.type$ -- 20
-change.case$ -- 17
+call.type$ -- 21
+change.case$ -- 15
 chr.to.int$ -- 6
-cite$ -- 25
-duplicate$ -- 2721
-empty$ -- 3416
-format.name$ -- 69
-if$ -- 8239
+cite$ -- 30
+duplicate$ -- 2715
+empty$ -- 3420
+format.name$ -- 68
+if$ -- 8223
 int.to.chr$ -- 0
-int.to.str$ -- 20
-missing$ -- 206
-newline$ -- 122
-num.names$ -- 22
-pop$ -- 384
+int.to.str$ -- 21
+missing$ -- 208
+newline$ -- 124
+num.names$ -- 21
+pop$ -- 399
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 0
-skip$ -- 371
+skip$ -- 386
 stack$ -- 0
-substring$ -- 6753
-swap$ -- 477
+substring$ -- 6690
+swap$ -- 482
 text.length$ -- 3
 text.prefix$ -- 0
 top$ -- 0
 type$ -- 0
-warning$ -- 5
-while$ -- 176
-width$ -- 22
-write$ -- 263
-(There were 5 warnings)
+warning$ -- 9
+while$ -- 172
+width$ -- 23
+write$ -- 266
+(There were 9 warnings)

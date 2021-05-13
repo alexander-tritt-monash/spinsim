@@ -27,14 +27,8 @@ Nickolls J, Buck I, Garland M, Skadron K.
 Degen CL, Reinhard F, Cappellaro P.
 \newblock Quantum sensing.
 \newblock Reviews of Modern Physics. 2017 Jul;89(3):035002.
-\newblock Publisher: American Physical Society.
 \newblock Available from:
   \url{https://link.aps.org/doi/10.1103/RevModPhys.89.035002}.
-
-\bibitem{morris_qcmonkatomicpy_2018}
-Morris J. {QCmonk}/{Atomicpy}; 2018.
-\newblock Original-date: 2018-08-03T03:07:58Z.
-\newblock Available from: \url{https://github.com/QCmonk/Atomicpy}.
 
 \bibitem{hamley_spin-nematic_2012}
 Hamley CD, Gerving CS, Hoang TM, Bookjans EM, Chapman MS.
@@ -99,6 +93,14 @@ Johansson JR, Nation PD, Nori F.
 \newblock Computer Physics Communications. 2013 Apr;184(4):1234--1240.
 \newblock Available from:
   \url{http://www.sciencedirect.com/science/article/pii/S0010465512003955}.
+
+\bibitem{noauthor_cuda_2012}
+{CUDA} {GPUs}; 2012.
+\newblock Available from: \url{https://developer.nvidia.com/cuda-gpus}.
+
+\bibitem{noauthor_cuda_2013}
+{CUDA} {Toolkit}; 2013.
+\newblock Available from: \url{https://developer.nvidia.com/cuda-toolkit}.
 
 \bibitem{parashar_axon_2020}
 Parashar M, Saha K, Bandyopadhyay S.
