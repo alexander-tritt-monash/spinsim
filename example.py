@@ -7,7 +7,7 @@ def get_field_larmor(time_sample, field_modifier, field_sample):
    field_sample[1] = 0            # Zero field in y direction
    field_sample[2] = 1000         # Split spin z eigenstates by 1kHz
 
-simulator_larmor = spinsim.Simulator(get_field_larmor, spinsim.SpinQuantumNumber.HALF)
+simulator_larmor = spinsim.Simulator(get_field_larmor, spinsim.SpinQuantumNumber.HALF, exponentiation_method = spinsim.ExponentiationMethod.LIE_TROTTER)
 
 state_init = np.asarray([1/np.sqrt(2), 1/np.sqrt(2)], np.cdouble)
 

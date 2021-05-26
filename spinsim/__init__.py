@@ -383,7 +383,7 @@ class Simulator:
             print("\033[31mspinsim error: numba could not jit get_field function into a device function.\033[0m\n")
             raise
 
-    def compile_time_evolver(self, get_field, spin_quantum_number, device, use_rotating_frame = True, integration_method = IntegrationMethod.MAGNUS_CF4, exponentiation_method = None, trotter_cutoff = 28, threads_per_block = 64, max_registers = 63):
+    def compile_time_evolver(self, get_field, spin_quantum_number, device, use_rotating_frame = True, integration_method = IntegrationMethod.MAGNUS_CF4, exponentiation_method = None, trotter_cutoff:int = 28, threads_per_block = 64, max_registers = 63):
         """
         Compiles the integrator and spin calculation functions of the simulator.
 
@@ -1288,6 +1288,14 @@ class Utilities:
                 result[1, 1] = left[1, 0]*right[0, 1] + left[1, 1]*right[1, 1]
 
             @jit_device
+            def matrix_square_residual(operator, result):
+                result[0, 0] = (2 + operator[0, 0])*operator[0, 0] + operator[0, 1]*operator[1, 0]
+                result[1, 0] = operator[1, 0]*operator[0, 0] + (2 + operator[1, 1])*operator[1, 0]
+
+                result[0, 1] = (2 + operator[0, 0])*operator[0, 1] + operator[0, 1]*operator[1, 1]
+                result[1, 1] = operator[1, 0]*operator[0, 1] + (2 + operator[1, 1])*operator[1, 1]
+
+            @jit_device
             def adjoint(operator, result):
                 result[0, 0] = conj(operator[0, 0])
                 result[1, 0] = conj(operator[0, 1])
@@ -1329,7 +1337,10 @@ class Utilities:
                 precision = 4**hyper_cube_amount
                 
                 a = math.sqrt(field_sample[0]*field_sample[0] + field_sample[1]*field_sample[1])
-                ep = (field_sample[0] + 1j*field_sample[1])/a
+                if a > 0:
+                    ep = (field_sample[0] + 1j*field_sample[1])/a
+                else:
+                    ep = 1
                 a = a/precision
 
                 Ca = math.cos(a/2)
@@ -1339,14 +1350,14 @@ class Utilities:
                 ez = field_sample[2]/(2*precision)
                 ez = math.cos(ez) + 1j*math.sin(ez)
 
-                eq = field_sample[3]/(6*precision)
-                eq = math.cos(eq) + 1j*math.sin(eq)
+                # eq = field_sample[3]/(6*precision)
+                # eq = math.cos(eq) + 1j*math.sin(eq)
 
-                result[0, 0] = Ca/ez
+                result[0, 0] = Ca/ez - 1
                 result[1, 0] = Sa*ep
 
                 result[0, 1] = Sa/ep
-                result[1, 1] = Ca*ez
+                result[1, 1] = Ca*ez - 1
 
                 if device_index == 0:
                     temporary = np.empty((2, 2), dtype = np.complex128)
@@ -1356,8 +1367,12 @@ class Utilities:
                     temporary_group = roc.shared.array((threads_per_block, 2, 2), dtype = np.complex128)
                     temporary = temporary_group[roc.get_local_id(1), :, :]
                 for power_index in range(hyper_cube_amount):
-                    matrix_multiply(result, result, temporary)
-                    matrix_multiply(temporary, temporary, result)
+                    matrix_square_residual(result, temporary)
+                    matrix_square_residual(temporary, result)
+                    # matrix_multiply(result, result, temporary)
+                    # matrix_multiply(temporary, temporary, result)
+                result[0, 0] += 1
+                result[1, 1] += 1
 
             # @jit_device
             # def matrix_exponential_lie_trotter(field_sample, result, trotter_cutoff):
@@ -1464,6 +1479,20 @@ class Utilities:
                 result[0, 2] = left[0, 0]*right[0, 2] + left[0, 1]*right[1, 2] + left[0, 2]*right[2, 2]
                 result[1, 2] = left[1, 0]*right[0, 2] + left[1, 1]*right[1, 2] + left[1, 2]*right[2, 2]
                 result[2, 2] = left[2, 0]*right[0, 2] + left[2, 1]*right[1, 2] + left[2, 2]*right[2, 2]
+
+            @jit_device
+            def matrix_square_residual(operator, result):
+                result[0, 0] = (2 + operator[0, 0])*operator[0, 0] + operator[0, 1]*operator[1, 0] + operator[0, 2]*operator[2, 0]
+                result[1, 0] = operator[1, 0]*operator[0, 0] + (2 + operator[1, 1])*operator[1, 0] + operator[1, 2]*operator[2, 0]
+                result[2, 0] = operator[2, 0]*operator[0, 0] + operator[2, 1]*operator[1, 0] + (2 + operator[2, 2])*operator[2, 0]
+
+                result[0, 1] = (2 + operator[0, 0])*operator[0, 1] + operator[0, 1]*operator[1, 1] + operator[0, 2]*operator[2, 1]
+                result[1, 1] = operator[1, 0]*operator[0, 1] + (2 + operator[1, 1])*operator[1, 1] + operator[1, 2]*operator[2, 1]
+                result[2, 1] = operator[2, 0]*operator[0, 1] + operator[2, 1]*operator[1, 1] + (2 + operator[2, 2])*operator[2, 1]
+
+                result[0, 2] = (2 + operator[0, 0])*operator[0, 2] + operator[0, 1]*operator[1, 2] + operator[0, 2]*operator[2, 2]
+                result[1, 2] = operator[1, 0]*operator[0, 2] + (2 + operator[1, 1])*operator[1, 2] + operator[1, 2]*operator[2, 2]
+                result[2, 2] = operator[2, 0]*operator[0, 2] + operator[2, 1]*operator[1, 2] + (2 + operator[2, 2])*operator[2, 2]
             
             @jit_device
             def adjoint(operator, result):
@@ -1491,7 +1520,10 @@ class Utilities:
                 precision = 4**hyper_cube_amount
                 
                 a = math.sqrt(field_sample[0]*field_sample[0] + field_sample[1]*field_sample[1])
-                ep = (field_sample[0] + 1j*field_sample[1])/a
+                if a > 0:
+                    ep = (field_sample[0] + 1j*field_sample[1])/a
+                else:
+                    ep = 1
                 a = a/precision
 
                 Ca = math.cos(a/2)
@@ -1508,17 +1540,31 @@ class Utilities:
                 eq = field_sample[3]/(6*precision)
                 eq = math.cos(eq) + 1j*math.sin(eq)
 
-                result[0, 0] = (Ca/(eq*ez))*(Ca/(eq*ez))
+                # Ca = 1
+
+                # Sa = a/2
+
+                # ca = 1
+
+                # sa = -1j*a/sqrt2
+
+                # ez = field_sample[2]/(2*precision)
+                # ez = 1 + 1j*ez
+
+                # eq = field_sample[3]/(6*precision)
+                # eq = 1 + 1j*eq
+
+                result[0, 0] = (Ca/(eq*ez))*(Ca/(eq*ez)) - 1
                 result[1, 0] = sa*eq*ep/ez
                 result[2, 0] = -((Sa*ep/eq)*(Sa*ep/eq))
 
                 result[0, 1] = sa*eq/(ez*ep)
-                result[1, 1] = ca*(eq*eq*eq*eq)
+                result[1, 1] = ca*(eq*eq*eq*eq) - 1
                 result[2, 1] = sa*eq*ez*ep
 
                 result[0, 2] = -((Sa*eq/ep)*(Sa*eq/ep))
                 result[1, 2] = sa*eq*ez/ep
-                result[2, 2] = (Ca*ez/eq)*(Ca*ez/eq)
+                result[2, 2] = (Ca*ez/eq)*(Ca*ez/eq) - 1
 
                 if device_index == 0:
                     temporary = np.empty((3, 3), dtype = np.complex128)
@@ -1528,8 +1574,12 @@ class Utilities:
                     temporary_group = roc.shared.array((threads_per_block, 3, 3), dtype = np.complex128)
                     temporary = temporary_group[roc.get_local_id(1), :, :]
                 for power_index in range(hyper_cube_amount):
-                    matrix_multiply(result, result, temporary)
-                    matrix_multiply(temporary, temporary, result)
+                    matrix_square_residual(result, temporary)
+                    matrix_square_residual(temporary, result)
+                
+                result[0, 0] += 1
+                result[1, 1] += 1
+                result[2, 2] += 1
             
             # @jit_device
             # def matrix_exponential_lie_trotter(field_sample, result, trotter_cutoff):
@@ -1585,3 +1635,4 @@ class Utilities:
         self.adjoint = adjoint
         self.matrix_exponential_analytic = matrix_exponential_analytic
         self.matrix_exponential_lie_trotter = matrix_exponential_lie_trotter
+        self.matrix_square_residual = matrix_square_residual
