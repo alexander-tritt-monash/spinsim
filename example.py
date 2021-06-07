@@ -1,13 +1,14 @@
 import spinsim
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 
 def get_field_larmor(time_sample, field_modifier, field_sample):
    field_sample[0] = 0            # Zero field in x direction
    field_sample[1] = 0            # Zero field in y direction
-   field_sample[2] = 1000         # Split spin z eigenstates by 1kHz
+   field_sample[2] = math.tau*1000         # Split spin z eigenstates by 1kHz
 
-simulator_larmor = spinsim.Simulator(get_field_larmor, spinsim.SpinQuantumNumber.HALF, exponentiation_method = spinsim.ExponentiationMethod.LIE_TROTTER)
+simulator_larmor = spinsim.Simulator(get_field_larmor, spinsim.SpinQuantumNumber.HALF)
 
 state_init = np.asarray([1/np.sqrt(2), 1/np.sqrt(2)], np.cdouble)
 
@@ -29,9 +30,9 @@ import math
 
 def get_field_rabi(time_sample, field_modifier, field_sample):
    # Dress atoms from the x direction, Rabi flopping at 1kHz
-   field_sample[0] = 2000*math.cos(math.tau*20e3*field_modifier*time_sample)
+   field_sample[0] = math.tau*2000*math.cos(math.tau*20e3*field_modifier*time_sample)
    field_sample[1] = 0                        # Zero field in y direction
-   field_sample[2] = 20e3*field_modifier     # Split spin z eigenstates by 700kHz
+   field_sample[2] = math.tau*20e3*field_modifier     # Split spin z eigenstates by 700kHz
    field_sample[3] = 0                        # Zero quadratic shift, found in spin one systems
 
 simulator_rabi = spinsim.Simulator(get_field_rabi, spinsim.SpinQuantumNumber.ONE)

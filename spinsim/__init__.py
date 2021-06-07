@@ -10,6 +10,7 @@ import numba as nb
 from numba import cuda
 from numba import roc
 import math
+import cmath
 
 sqrt2 = math.sqrt(2)
 sqrt3 = math.sqrt(3)
@@ -432,6 +433,7 @@ class Simulator:
         set_to_one = utilities.set_to_one
         set_to_zero = utilities.set_to_zero
         matrix_multiply = utilities.matrix_multiply
+        matrix_multiply_m1 = utilities.matrix_multiply_m1
         adjoint = utilities.adjoint
         matrix_exponential_analytic = utilities.matrix_exponential_analytic
         matrix_exponential_lie_trotter = utilities.matrix_exponential_lie_trotter
@@ -484,7 +486,7 @@ class Simulator:
 
             # Premultiply to the exitsing time evolution operator
             set_to(time_evolution_coarse, time_evolution_old)
-            matrix_multiply(time_evolution_fine, time_evolution_old, time_evolution_coarse)
+            matrix_multiply_m1(time_evolution_fine, time_evolution_old, time_evolution_coarse)
 
         if use_rotating_frame:
             if dimension == 3:
@@ -515,12 +517,12 @@ class Simulator:
             @jit_device_template("(float64, float64, float64, float64, float64[:, :], float64, complex128[:])")
             def get_field_integration_magnus_cf4(sweep_parameter, time_fine, time_coarse, time_step_integration, field_sample, rotating_wave, rotating_wave_winding):
                 time_sample = ((time_fine + 0.5*time_step_integration*(1 - 1/sqrt3)) - time_coarse)
-                rotating_wave_winding[0] = math.cos(math.tau*rotating_wave*time_sample) + 1j*math.sin(math.tau*rotating_wave*time_sample)
+                rotating_wave_winding[0] = cmath.exp(1j*rotating_wave*time_sample)
                 time_sample += time_coarse
                 get_field_jit(time_sample, sweep_parameter, field_sample[0, :])
 
                 time_sample = ((time_fine + 0.5*time_step_integration*(1 + 1/sqrt3)) - time_coarse)
-                rotating_wave_winding[1] = math.cos(math.tau*rotating_wave*time_sample) + 1j*math.sin(math.tau*rotating_wave*time_sample)
+                rotating_wave_winding[1] = cmath.exp(1j*rotating_wave*time_sample)
                 time_sample += time_coarse
                 get_field_jit(time_sample, sweep_parameter, field_sample[1, :])
 
@@ -532,19 +534,19 @@ class Simulator:
                 w0 = (1.5 + sqrt3)/6
                 w1 = (1.5 - sqrt3)/6
                 
-                field_sample[2, 0] = math.tau*time_step_integration*(w0*field_sample[0, 0] + w1*field_sample[1, 0])
-                field_sample[2, 1] = math.tau*time_step_integration*(w0*field_sample[0, 1] + w1*field_sample[1, 1])
-                field_sample[2, 2] = math.tau*time_step_integration*(w0*field_sample[0, 2] + w1*field_sample[1, 2])
+                field_sample[2, 0] = time_step_integration*(w0*field_sample[0, 0] + w1*field_sample[1, 0])
+                field_sample[2, 1] = time_step_integration*(w0*field_sample[0, 1] + w1*field_sample[1, 1])
+                field_sample[2, 2] = time_step_integration*(w0*field_sample[0, 2] + w1*field_sample[1, 2])
                 if dimension > 2:
-                    field_sample[2, 3] = math.tau*time_step_integration*(w0*field_sample[0, 3] + w1*field_sample[1, 3])
+                    field_sample[2, 3] = time_step_integration*(w0*field_sample[0, 3] + w1*field_sample[1, 3])
 
                 append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_coarse)
 
-                field_sample[2, 0] = math.tau*time_step_integration*(w1*field_sample[0, 0] + w0*field_sample[1, 0])
-                field_sample[2, 1] = math.tau*time_step_integration*(w1*field_sample[0, 1] + w0*field_sample[1, 1])
-                field_sample[2, 2] = math.tau*time_step_integration*(w1*field_sample[0, 2] + w0*field_sample[1, 2])
+                field_sample[2, 0] = time_step_integration*(w1*field_sample[0, 0] + w0*field_sample[1, 0])
+                field_sample[2, 1] = time_step_integration*(w1*field_sample[0, 1] + w0*field_sample[1, 1])
+                field_sample[2, 2] = time_step_integration*(w1*field_sample[0, 2] + w0*field_sample[1, 2])
                 if dimension > 2:
-                    field_sample[2, 3] = math.tau*time_step_integration*(w1*field_sample[0, 3] + w0*field_sample[1, 3])
+                    field_sample[2, 3] = time_step_integration*(w1*field_sample[0, 3] + w0*field_sample[1, 3])
 
                 append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_coarse)
 
@@ -555,12 +557,12 @@ class Simulator:
             @jit_device_template("(float64, float64, float64, float64, float64[:, :], float64, complex128[:])")
             def get_field_integration_half_step(sweep_parameter, time_fine, time_coarse, time_step_integration, field_sample, rotating_wave, rotating_wave_winding):
                 time_sample = time_fine - time_coarse
-                rotating_wave_winding[0] = math.cos(math.tau*rotating_wave*time_sample) + 1j*math.sin(math.tau*rotating_wave*time_sample)
+                rotating_wave_winding[0] = cmath.exp(1j*rotating_wave*time_sample)
                 time_sample += time_coarse
                 get_field_jit(time_sample, sweep_parameter, field_sample[0, :])
 
                 time_sample = time_fine + time_step_integration - time_coarse
-                rotating_wave_winding[1] = math.cos(math.tau*rotating_wave*time_sample) + 1j*math.sin(math.tau*rotating_wave*time_sample)
+                rotating_wave_winding[1] = cmath.exp(1j*rotating_wave*time_sample)
                 time_sample += time_coarse
                 get_field_jit(time_sample, sweep_parameter, field_sample[1, :])
 
@@ -569,19 +571,19 @@ class Simulator:
                 transform_frame(field_sample[0, :], rotating_wave, rotating_wave_winding[0])
                 transform_frame(field_sample[1, :], rotating_wave, rotating_wave_winding[1])
                 
-                field_sample[2, 0] = math.tau*time_step_integration*field_sample[0, 0]/2
-                field_sample[2, 1] = math.tau*time_step_integration*field_sample[0, 1]/2
-                field_sample[2, 2] = math.tau*time_step_integration*field_sample[0, 2]/2
+                field_sample[2, 0] = time_step_integration*field_sample[0, 0]/2
+                field_sample[2, 1] = time_step_integration*field_sample[0, 1]/2
+                field_sample[2, 2] = time_step_integration*field_sample[0, 2]/2
                 if dimension > 2:
-                    field_sample[2, 3] = math.tau*time_step_integration*field_sample[0, 3]/2
+                    field_sample[2, 3] = time_step_integration*field_sample[0, 3]/2
 
                 append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_coarse)
 
-                field_sample[2, 0] = math.tau*time_step_integration*field_sample[1, 0]/2
-                field_sample[2, 1] = math.tau*time_step_integration*field_sample[1, 1]/2
-                field_sample[2, 2] = math.tau*time_step_integration*field_sample[1, 2]/2
+                field_sample[2, 0] = time_step_integration*field_sample[1, 0]/2
+                field_sample[2, 1] = time_step_integration*field_sample[1, 1]/2
+                field_sample[2, 2] = time_step_integration*field_sample[1, 2]/2
                 if dimension > 2:
-                    field_sample[2, 3] = math.tau*time_step_integration*field_sample[1, 3]/2
+                    field_sample[2, 3] = time_step_integration*field_sample[1, 3]/2
 
                 append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_coarse)
 
@@ -592,7 +594,7 @@ class Simulator:
             @jit_device_template("(float64, float64, float64, float64, float64[:, :], float64, complex128[:])")
             def get_field_integration_midpoint(sweep_parameter, time_fine, time_coarse, time_step_integration, field_sample, rotating_wave, rotating_wave_winding):
                 time_sample = time_fine + 0.5*time_step_integration - time_coarse
-                rotating_wave_winding[0] = math.cos(math.tau*rotating_wave*time_sample) + 1j*math.sin(math.tau*rotating_wave*time_sample)
+                rotating_wave_winding[0] = cmath.exp(1j*rotating_wave*time_sample)
                 time_sample += time_coarse
                 get_field_jit(time_sample, sweep_parameter, field_sample[0, :])
 
@@ -600,11 +602,11 @@ class Simulator:
             def append_exponentiation_integration_midpoint(time_evolution_fine, time_evolution_coarse, field_sample, time_step_integration, rotating_wave, rotating_wave_winding):
                 transform_frame(field_sample[0, :], rotating_wave, rotating_wave_winding[0])
                 
-                field_sample[0, 0] = math.tau*time_step_integration*field_sample[0, 0]
-                field_sample[0, 1] = math.tau*time_step_integration*field_sample[0, 1]
-                field_sample[0, 2] = math.tau*time_step_integration*field_sample[0, 2]
+                field_sample[0, 0] = time_step_integration*field_sample[0, 0]
+                field_sample[0, 1] = time_step_integration*field_sample[0, 1]
+                field_sample[0, 2] = time_step_integration*field_sample[0, 2]
                 if dimension > 2:
-                    field_sample[0, 3] = math.tau*time_step_integration*field_sample[0, 3]
+                    field_sample[0, 3] = time_step_integration*field_sample[0, 3]
 
                 append_exponentiation(field_sample[0, :], time_evolution_fine, time_evolution_coarse)
 
@@ -637,7 +639,7 @@ class Simulator:
             time_fine = time_coarse[time_index]
 
             # Initialise time evolution operator to 1
-            set_to_one(time_evolution_coarse[time_index, :])
+            set_to_zero(time_evolution_coarse[time_index, :])
             field_sample[0, 2] = 0
             if use_rotating_frame:
                 time_sample = time_coarse[time_index] + time_step_output/2
@@ -653,9 +655,15 @@ class Simulator:
 
                 time_fine += time_step_integration
 
+            # Exit from m1 domain
+            time_evolution_coarse[time_index, 0, 0] += 1
+            time_evolution_coarse[time_index, 1, 1] += 1
+            if dimension > 2:
+                time_evolution_coarse[time_index, 2, 2] += 1
+
             if use_rotating_frame:
                 # Take out of rotating frame
-                rotating_wave_winding[0] = math.cos(math.tau*rotating_wave*time_step_output) + 1j*math.sin(math.tau*rotating_wave*time_step_output)
+                rotating_wave_winding[0] = cmath.exp(1j*rotating_wave*time_step_output)
 
                 time_evolution_coarse[time_index, 0, 0] /= rotating_wave_winding[0]
                 time_evolution_coarse[time_index, 0, 1] /= rotating_wave_winding[0]
@@ -1246,6 +1254,20 @@ class Utilities:
         def complex_abs(z):
             return math.sqrt(z.real**2 + z.imag**2)
 
+        # @jit_device
+        # def expm1c(z):
+        #     er = math.exp(z.real)
+        #     return math.expm1(z.real) - 2*er*(math.sin(z.imag/2)**2) + 1j*er*math.sin(z.imag)
+
+        @jit_device
+        def expm1i(i):
+            return -2*(math.sin(i/2)**2) + 1j*math.sin(i)
+
+        @jit_device
+        def cos_exp_m1(c, e):
+            # return -2*(math.sin((c + e)/2)**2) + 1j*math.sin(i)
+            return (expm1i(c + e) + expm1i(-c + e))/2
+
         if spin_quantum_number == SpinQuantumNumber.HALF:
             @jit_device
             def norm2(z):
@@ -1288,12 +1310,20 @@ class Utilities:
                 result[1, 1] = left[1, 0]*right[0, 1] + left[1, 1]*right[1, 1]
 
             @jit_device
-            def matrix_square_residual(operator, result):
+            def matrix_square_m1(operator, result):
                 result[0, 0] = (2 + operator[0, 0])*operator[0, 0] + operator[0, 1]*operator[1, 0]
                 result[1, 0] = operator[1, 0]*operator[0, 0] + (2 + operator[1, 1])*operator[1, 0]
 
                 result[0, 1] = (2 + operator[0, 0])*operator[0, 1] + operator[0, 1]*operator[1, 1]
                 result[1, 1] = operator[1, 0]*operator[0, 1] + (2 + operator[1, 1])*operator[1, 1]
+
+            @jit_device
+            def matrix_multiply_m1(left, right, result):
+                result[0, 0] = (left[0, 0] + right[0, 0]) + (left[0, 0]*right[0, 0] + left[0, 1]*right[1, 0])
+                result[1, 0] = (left[1, 0] + right[1, 0]) + (left[1, 0]*right[0, 0] + left[1, 1]*right[1, 0])
+
+                result[0, 1] = (left[0, 1] + right[0, 1]) + (left[0, 0]*right[0, 1] + left[0, 1]*right[1, 1])
+                result[1, 1] = (left[1, 1] + right[1, 1]) + (left[1, 0]*right[0, 1] + left[1, 1]*right[1, 1])
 
             @jit_device
             def adjoint(operator, result):
@@ -1316,7 +1346,7 @@ class Utilities:
                     y /= r
                     z /= r
 
-                    c = math.cos(r/2)
+                    c = cos_exp_m1(r/2, 0)
                     s = math.sin(r/2)
 
                     result[0, 0] = c - 1j*z*s
@@ -1324,10 +1354,10 @@ class Utilities:
                     result[0, 1] = -(y + 1j*x)*s
                     result[1, 1] = c + 1j*z*s
                 else:
-                    result[0, 0] = 1
+                    result[0, 0] = 0
                     result[1, 0] = 0
                     result[0, 1] = 0
-                    result[1, 1] = 1
+                    result[1, 1] = 0
 
             @jit_device
             def matrix_exponential_lie_trotter(field_sample, result, trotter_cutoff):
@@ -1347,17 +1377,17 @@ class Utilities:
 
                 Sa = -1j*math.sin(a/2)
 
-                ez = field_sample[2]/(2*precision)
-                ez = math.cos(ez) + 1j*math.sin(ez)
+                z = field_sample[2]/(2*precision)
+                # ez = math.cos(ez) + 1j*math.sin(ez)
 
                 # eq = field_sample[3]/(6*precision)
                 # eq = math.cos(eq) + 1j*math.sin(eq)
 
-                result[0, 0] = Ca/ez - 1
+                result[0, 0] = cos_exp_m1(a/2, -z)
                 result[1, 0] = Sa*ep
 
                 result[0, 1] = Sa/ep
-                result[1, 1] = Ca*ez - 1
+                result[1, 1] = cos_exp_m1(a/2, z)
 
                 if device_index == 0:
                     temporary = np.empty((2, 2), dtype = np.complex128)
@@ -1367,12 +1397,12 @@ class Utilities:
                     temporary_group = roc.shared.array((threads_per_block, 2, 2), dtype = np.complex128)
                     temporary = temporary_group[roc.get_local_id(1), :, :]
                 for power_index in range(hyper_cube_amount):
-                    matrix_square_residual(result, temporary)
-                    matrix_square_residual(temporary, result)
+                    matrix_square_m1(result, temporary)
+                    matrix_square_m1(temporary, result)
                     # matrix_multiply(result, result, temporary)
                     # matrix_multiply(temporary, temporary, result)
-                result[0, 0] += 1
-                result[1, 1] += 1
+                # result[0, 0] += 1
+                # result[1, 1] += 1
 
             # @jit_device
             # def matrix_exponential_lie_trotter(field_sample, result, trotter_cutoff):
@@ -1481,7 +1511,7 @@ class Utilities:
                 result[2, 2] = left[2, 0]*right[0, 2] + left[2, 1]*right[1, 2] + left[2, 2]*right[2, 2]
 
             @jit_device
-            def matrix_square_residual(operator, result):
+            def matrix_square_m1(operator, result):
                 result[0, 0] = (2 + operator[0, 0])*operator[0, 0] + operator[0, 1]*operator[1, 0] + operator[0, 2]*operator[2, 0]
                 result[1, 0] = operator[1, 0]*operator[0, 0] + (2 + operator[1, 1])*operator[1, 0] + operator[1, 2]*operator[2, 0]
                 result[2, 0] = operator[2, 0]*operator[0, 0] + operator[2, 1]*operator[1, 0] + (2 + operator[2, 2])*operator[2, 0]
@@ -1493,6 +1523,31 @@ class Utilities:
                 result[0, 2] = (2 + operator[0, 0])*operator[0, 2] + operator[0, 1]*operator[1, 2] + operator[0, 2]*operator[2, 2]
                 result[1, 2] = operator[1, 0]*operator[0, 2] + (2 + operator[1, 1])*operator[1, 2] + operator[1, 2]*operator[2, 2]
                 result[2, 2] = operator[2, 0]*operator[0, 2] + operator[2, 1]*operator[1, 2] + (2 + operator[2, 2])*operator[2, 2]
+
+            @jit_device
+            def matrix_multiply_m1(left, right, result):
+                result[0, 0] = (left[0, 0] + right[0, 0]) + (left[0, 0]*right[0, 0] + left[0, 1]*right[1, 0] + left[0, 2]*right[2, 0])
+                result[1, 0] = (left[1, 0] + right[1, 0]) + (left[1, 0]*right[0, 0] + left[1, 1]*right[1, 0] + left[1, 2]*right[2, 0])
+                result[2, 0] = (left[2, 0] + right[2, 0]) + (left[2, 0]*right[0, 0] + left[2, 1]*right[1, 0] + left[2, 2]*right[2, 0])
+
+                result[0, 1] = (left[0, 1] + right[0, 1]) + (left[0, 0]*right[0, 1] + left[0, 1]*right[1, 1] + left[0, 2]*right[2, 1])
+                result[1, 1] = (left[1, 1] + right[1, 1]) + (left[1, 0]*right[0, 1] + left[1, 1]*right[1, 1] + left[1, 2]*right[2, 1])
+                result[2, 1] = (left[2, 1] + right[2, 1]) + (left[2, 0]*right[0, 1] + left[2, 1]*right[1, 1] + left[2, 2]*right[2, 1])
+
+                result[0, 2] = (left[0, 2] + right[0, 2]) + (left[0, 0]*right[0, 2] + left[0, 1]*right[1, 2] + left[0, 2]*right[2, 2])
+                result[1, 2] = (left[1, 2] + right[1, 2]) + (left[1, 0]*right[0, 2] + left[1, 1]*right[1, 2] + left[1, 2]*right[2, 2])
+                result[2, 2] = (left[2, 2] + right[2, 2]) + (left[2, 0]*right[0, 2] + left[2, 1]*right[1, 2] + left[2, 2]*right[2, 2])
+                
+                # result[1, 0] = left[1, 0]*right[0, 0] + left[1, 1]*right[1, 0] + left[1, 2]*right[2, 0]
+                # result[2, 0] = left[2, 0]*right[0, 0] + left[2, 1]*right[1, 0] + left[2, 2]*right[2, 0]
+
+                # result[0, 1] = left[0, 0]*right[0, 1] + left[0, 1]*right[1, 1] + left[0, 2]*right[2, 1]
+                # result[1, 1] = left[1, 0]*right[0, 1] + left[1, 1]*right[1, 1] + left[1, 2]*right[2, 1]
+                # result[2, 1] = left[2, 0]*right[0, 1] + left[2, 1]*right[1, 1] + left[2, 2]*right[2, 1]
+
+                # result[0, 2] = left[0, 0]*right[0, 2] + left[0, 1]*right[1, 2] + left[0, 2]*right[2, 2]
+                # result[1, 2] = left[1, 0]*right[0, 2] + left[1, 1]*right[1, 2] + left[1, 2]*right[2, 2]
+                # result[2, 2] = left[2, 0]*right[0, 2] + left[2, 1]*right[1, 2] + left[2, 2]*right[2, 2]
             
             @jit_device
             def adjoint(operator, result):
@@ -1518,27 +1573,39 @@ class Utilities:
                 if hyper_cube_amount < 0:
                     hyper_cube_amount = 0
                 precision = 4**hyper_cube_amount
-                
-                a = math.sqrt(field_sample[0]*field_sample[0] + field_sample[1]*field_sample[1])
-                if a > 0:
-                    ep = (field_sample[0] + 1j*field_sample[1])/a
-                else:
-                    ep = 1
-                a = a/precision
 
-                Ca = math.cos(a/2)
+                # a = math.sqrt(field_sample[0]*field_sample[0] + field_sample[1]*field_sample[1])
+                # if a > 0:
+                #     ep = (field_sample[0] + 1j*field_sample[1])/a
+                # else:
+                #     ep = 1
+                # a = a/precision
 
-                Sa = math.sin(a/2)
+                # Ca = math.cos(a/2)
 
-                ca = math.cos(a)
+                # Sa = math.sin(a/2)
 
-                sa = -1j*math.sin(a)/sqrt2
+                # ca = math.cos(a)
 
-                ez = field_sample[2]/(2*precision)
-                ez = math.cos(ez) + 1j*math.sin(ez)
+                # sa = -1j*math.sin(a)/sqrt2
 
-                eq = field_sample[3]/(6*precision)
-                eq = math.cos(eq) + 1j*math.sin(eq)
+                # ez = field_sample[2]/(2*precision)
+                # ez = math.cos(ez) + 1j*math.sin(ez)
+
+                # eq = field_sample[3]/(6*precision)
+                # eq = math.cos(eq) + 1j*math.sin(eq)
+
+                # result[0, 0] = (Ca/(eq*ez))*(Ca/(eq*ez)) - 1
+                # result[1, 0] = sa*eq*ep/ez
+                # result[2, 0] = -((Sa*ep/eq)*(Sa*ep/eq))
+
+                # result[0, 1] = sa*eq/(ez*ep)
+                # result[1, 1] = ca*(eq*eq*eq*eq) - 1
+                # result[2, 1] = sa*eq*ez*ep
+
+                # result[0, 2] = -((Sa*eq/ep)*(Sa*eq/ep))
+                # result[1, 2] = sa*eq*ez/ep
+                # result[2, 2] = (Ca*ez/eq)*(Ca*ez/eq) - 1
 
                 # Ca = 1
 
@@ -1554,17 +1621,30 @@ class Utilities:
                 # eq = field_sample[3]/(6*precision)
                 # eq = 1 + 1j*eq
 
-                result[0, 0] = (Ca/(eq*ez))*(Ca/(eq*ez)) - 1
-                result[1, 0] = sa*eq*ep/ez
-                result[2, 0] = -((Sa*ep/eq)*(Sa*ep/eq))
+                a = math.sqrt(field_sample[0]*field_sample[0] + field_sample[1]*field_sample[1])
+                if a > 0:
+                    p = math.atan2(field_sample[1], field_sample[0])
+                else:
+                    p = 0
+                a = a/precision
+                Sa = math.sin(a/2)
+                sa = -1j*math.sin(a)/sqrt2
+                z = field_sample[2]/(2*precision)
+                q = field_sample[3]/(6*precision)                
 
-                result[0, 1] = sa*eq/(ez*ep)
-                result[1, 1] = ca*(eq*eq*eq*eq) - 1
-                result[2, 1] = sa*eq*ez*ep
+                save_cos_exp_m1 = cos_exp_m1(a/2, -z - q)
+                result[0, 0] = save_cos_exp_m1*(save_cos_exp_m1 + 2)
+                result[1, 0] = sa*cmath.exp(1j*(q + p - z))
+                result[2, 0] = -(Sa**2)*cmath.exp(2*1j*(p - q))
 
-                result[0, 2] = -((Sa*eq/ep)*(Sa*eq/ep))
-                result[1, 2] = sa*eq*ez/ep
-                result[2, 2] = (Ca*ez/eq)*(Ca*ez/eq) - 1
+                result[0, 1] = sa*cmath.exp(1j*(q - p - z))
+                result[1, 1] = cos_exp_m1(a, 4*q)
+                result[2, 1] = sa*cmath.exp(1j*(q + p + z))
+
+                result[0, 2] = -(Sa**2)*cmath.exp(2*1j*(q - p))
+                result[1, 2] = sa*cmath.exp(1j*(q - p + z))
+                save_cos_exp_m1 = cos_exp_m1(a/2, z - q)
+                result[2, 2] = save_cos_exp_m1*(save_cos_exp_m1 + 2)
 
                 if device_index == 0:
                     temporary = np.empty((3, 3), dtype = np.complex128)
@@ -1574,12 +1654,12 @@ class Utilities:
                     temporary_group = roc.shared.array((threads_per_block, 3, 3), dtype = np.complex128)
                     temporary = temporary_group[roc.get_local_id(1), :, :]
                 for power_index in range(hyper_cube_amount):
-                    matrix_square_residual(result, temporary)
-                    matrix_square_residual(temporary, result)
+                    matrix_square_m1(result, temporary)
+                    matrix_square_m1(temporary, result)
                 
-                result[0, 0] += 1
-                result[1, 1] += 1
-                result[2, 2] += 1
+                # result[0, 0] += 1
+                # result[1, 1] += 1
+                # result[2, 2] += 1
             
             # @jit_device
             # def matrix_exponential_lie_trotter(field_sample, result, trotter_cutoff):
@@ -1632,7 +1712,8 @@ class Utilities:
         self.set_to_one = set_to_one
         self.set_to_zero = set_to_zero
         self.matrix_multiply = matrix_multiply
+        self.matrix_multiply_m1 = matrix_multiply_m1
         self.adjoint = adjoint
         self.matrix_exponential_analytic = matrix_exponential_analytic
         self.matrix_exponential_lie_trotter = matrix_exponential_lie_trotter
-        self.matrix_square_residual = matrix_square_residual
+        self.matrix_square_m1 = matrix_square_m1
