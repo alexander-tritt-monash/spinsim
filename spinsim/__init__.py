@@ -34,6 +34,27 @@ class SpinQuantumNumber(Enum):
         self._value_ = value
         self.dimension = dimension
         self.label = label
+        if self.label == "half":
+            self.plus_x = np.array([1, 1], np.complex128)/math.sqrt(2)
+            self.minus_x = np.array([-1, 1], np.complex128)/math.sqrt(2)
+
+            self.plus_y = np.array([1, 1j], np.complex128)/math.sqrt(2)
+            self.minus_y = np.array([1, -1j], np.complex128)/math.sqrt(2)
+
+            self.plus_z = np.array([1, 0], np.complex128)
+            self.minus_z = np.array([0, 1], np.complex128)
+        else:
+            self.plus_x = np.array([1, math.sqrt(2), 1], np.complex128)/2
+            self.zero_x = np.array([-1, 0, 1], np.complex128)/math.sqrt(2)
+            self.minus_x = np.array([1, -math.sqrt(2), 1], np.complex128)/2
+
+            self.plus_y = np.array([-1, -1j*math.sqrt(2), 1], np.complex128)/2
+            self.zero_y = np.array([1, 0, 1], np.complex128)/math.sqrt(2)
+            self.minus_y = np.array([1, -1j*math.sqrt(2), 1], np.complex128)/2
+
+            self.plus_z = np.array([1, 0, 0], np.complex128)
+            self.zero_z = np.array([0, 1, 0], np.complex128)
+            self.minus_z = np.array([0, 0, 1], np.complex128)
 
     HALF = (1/2, 2, "half")
     """
@@ -93,7 +114,12 @@ class ExponentiationMethod(Enum):
 
     LIE_TROTTER = ("lie_trotter", 1)
     """
-    Approximation using the Lie Trotter theorem.
+    Approximation using the Lie Trotter theorem, using the Pauli matrices and a single quadratic operator.
+    """
+
+    LIE_TROTTER_8 = ("lie_trotter_8", 2)
+    """
+    Approximation using the Lie Trotter theorem, using all basis elements of su(3).
     """
 
 class Device(Enum):
@@ -309,7 +335,7 @@ class Simulator:
 
         Parameters:
 
-        * **sweep_parameter** (:obj:`float`) - The input to the `get_field` function supplied by the user. Modifies the field function so the integrator can be used for many experiments, without the need for slow recompilation. For example, if the `sweep_parameter` is used to define the bias field strength in `get_field`, then one can run many simulations, sweeping through bias values, by calling this method multiple times, each time varying `sweep_parameter`.   
+        * **sweep_parameters** (:obj:`numpy.ndarray` of :obj:`numpy.float64`) - The input to the `get_field` function supplied by the user. Modifies the field function so the integrator can be used for many experiments, without the need for slow recompilation. For example, if the `sweep_parameters` is used to define the bias field strength in `get_field`, then one can run many simulations, sweeping through bias values, by calling this method multiple times, each time varying `sweep_parameters`.   
         * **time_coarse**   (:obj:`numpy.ndarray` of :obj:`numpy.float64` (time_index)) - The times that `state` was evaluated at.
         * **time_end_points** (:obj:`numpy.ndarray` of :obj:`numpy.float64` (start/end)) - The time offset that the experiment is to start at, and the time that the experiment is to finish at. Measured in s.
         * **time_step_integration** (:obj:`float`) - The integration time step. Measured in s.
@@ -326,7 +352,7 @@ class Simulator:
         
         * **spin** (:obj:`numpy.ndarray` of :obj:`numpy.float64` (time_index, spatial_direction)) - The expected spin projection (Bloch vector) over time.
     """
-    def __init__(self, get_field, spin_quantum_number, device = None, exponentiation_method = None, use_rotating_frame = True, integration_method = IntegrationMethod.MAGNUS_CF4, trotter_cutoff = 32, threads_per_block = 64, max_registers = 63):
+    def __init__(self, get_field:callable, spin_quantum_number:SpinQuantumNumber, device:Device = None, exponentiation_method:ExponentiationMethod = None, use_rotating_frame:bool = True, integration_method:IntegrationMethod = IntegrationMethod.MAGNUS_CF4, trotter_cutoff:int = 32, threads_per_block:int = 64, max_registers:int = 63):
         """
         .. _Achieved Occupancy: https://docs.nvidia.com/gameworks/content/developertools/desktop/analysis/report/cudaexperiments/kernellevel/achievedoccupancy.htm
 
@@ -381,7 +407,7 @@ class Simulator:
         try:
             self.compile_time_evolver(get_field, spin_quantum_number, device, use_rotating_frame, integration_method, exponentiation_method, trotter_cutoff, threads_per_block, max_registers)
         except:
-            print("\033[31mspinsim error: numba could not jit get_field function into a device function.\033[0m\n")
+            print("\033[31mspinsim error!!!\nnumba could not jit get_field function into a device function.\033[0m\n")
             raise
 
     def compile_time_evolver(self, get_field, spin_quantum_number, device, use_rotating_frame = True, integration_method = IntegrationMethod.MAGNUS_CF4, exponentiation_method = None, trotter_cutoff:int = 28, threads_per_block = 64, max_registers = 63):
@@ -437,14 +463,13 @@ class Simulator:
         adjoint = utilities.adjoint
         matrix_exponential_analytic = utilities.matrix_exponential_analytic
         matrix_exponential_lie_trotter = utilities.matrix_exponential_lie_trotter
+        matrix_exponential_lie_trotter_8 = utilities.matrix_exponential_lie_trotter_8
 
         jit_host = device.jit_host
         jit_device = device.jit_device
         jit_device_template = device.jit_device_template
         device_index = device.index
 
-        dimension = spin_quantum_number.dimension
-        lie_dimension = dimension + 1
         # utility_set = spin_quantum_number.utility_set
 
         if not exponentiation_method:
@@ -464,6 +489,16 @@ class Simulator:
             sample_index_end = 1
 
         exponentiation_method_index = exponentiation_method.index
+
+        dimension = spin_quantum_number.dimension
+        if spin_quantum_number == SpinQuantumNumber.HALF:
+            lie_dimension = 3
+        elif spin_quantum_number == SpinQuantumNumber.ONE:
+            if exponentiation_method == ExponentiationMethod.LIE_TROTTER:
+                lie_dimension = 4
+            elif exponentiation_method == ExponentiationMethod.LIE_TROTTER_8:
+                lie_dimension = 8
+
         if (exponentiation_method == ExponentiationMethod.ANALYTIC) and (spin_quantum_number != SpinQuantumNumber.HALF):
             print("\033[31mspinsim warning!!!\n_attempting to use an analytic exponentiation method outside of spin half. Switching to a Lie Trotter method.\033[0m")
             exponentiation_method = ExponentiationMethod.LIE_TROTTER
@@ -483,6 +518,8 @@ class Simulator:
                 matrix_exponential_analytic(field_sample, time_evolution_fine)
             elif exponentiation_method_index == 1:
                 matrix_exponential_lie_trotter(field_sample, time_evolution_fine, trotter_cutoff)
+            elif exponentiation_method_index == 2:
+                matrix_exponential_lie_trotter_8(field_sample, time_evolution_fine, trotter_cutoff)
 
             # Premultiply to the exitsing time evolution operator
             set_to(time_evolution_coarse, time_evolution_old)
@@ -490,13 +527,28 @@ class Simulator:
 
         if use_rotating_frame:
             if dimension == 3:
-                @jit_device_template("(float64[:], float64, complex128)")
-                def transform_frame_spin_one_rotating(field_sample, rotating_wave, rotating_wave_winding):
-                    X = (field_sample[0] + 1j*field_sample[1])/rotating_wave_winding
-                    field_sample[0] = X.real
-                    field_sample[1] = X.imag
-                    field_sample[2] = field_sample[2] - rotating_wave
-                transform_frame = transform_frame_spin_one_rotating
+                if exponentiation_method_index == 2:
+                    @jit_device_template("(float64[:], float64, complex128)")
+                    def transform_frame_spin_one_rotating_8(field_sample, rotating_wave, rotating_wave_winding):
+                        X = (field_sample[0] + 1j*field_sample[1])*conj(rotating_wave_winding)
+                        field_sample[0] = X.real
+                        field_sample[1] = X.imag
+                        field_sample[2] = field_sample[2] - rotating_wave
+                        X = (field_sample[4] + 1j*field_sample[5])*conj(rotating_wave_winding)*conj(rotating_wave_winding)
+                        field_sample[4] = X.real
+                        field_sample[5] = X.imag
+                        X = (field_sample[6] + 1j*field_sample[7])*conj(rotating_wave_winding)
+                        field_sample[6] = X.real
+                        field_sample[7] = X.imag
+                    transform_frame = transform_frame_spin_one_rotating_8
+                else:
+                    @jit_device_template("(float64[:], float64, complex128)")
+                    def transform_frame_spin_one_rotating(field_sample, rotating_wave, rotating_wave_winding):
+                        X = (field_sample[0] + 1j*field_sample[1])/rotating_wave_winding
+                        field_sample[0] = X.real
+                        field_sample[1] = X.imag
+                        field_sample[2] = field_sample[2] - rotating_wave
+                    transform_frame = transform_frame_spin_one_rotating
             else:
                 @jit_device_template("(float64[:], float64, complex128)")
                 def transform_frame_spin_half_rotating(field_sample, rotating_wave, rotating_wave_winding):
@@ -514,17 +566,17 @@ class Simulator:
         get_field_jit = jit_device(get_field)
 
         if integration_method == IntegrationMethod.MAGNUS_CF4:
-            @jit_device_template("(float64, float64, float64, float64, float64[:, :], float64, complex128[:])")
-            def get_field_integration_magnus_cf4(sweep_parameter, time_fine, time_coarse, time_step_integration, field_sample, rotating_wave, rotating_wave_winding):
+            @jit_device_template("(float64[:], float64, float64, float64, float64[:, :], float64, complex128[:])")
+            def get_field_integration_magnus_cf4(sweep_parameters, time_fine, time_coarse, time_step_integration, field_sample, rotating_wave, rotating_wave_winding):
                 time_sample = ((time_fine + 0.5*time_step_integration*(1 - 1/sqrt3)) - time_coarse)
                 rotating_wave_winding[0] = cmath.exp(1j*rotating_wave*time_sample)
                 time_sample += time_coarse
-                get_field_jit(time_sample, sweep_parameter, field_sample[0, :])
+                get_field_jit(time_sample, sweep_parameters, field_sample[0, :])
 
                 time_sample = ((time_fine + 0.5*time_step_integration*(1 + 1/sqrt3)) - time_coarse)
                 rotating_wave_winding[1] = cmath.exp(1j*rotating_wave*time_sample)
                 time_sample += time_coarse
-                get_field_jit(time_sample, sweep_parameter, field_sample[1, :])
+                get_field_jit(time_sample, sweep_parameters, field_sample[1, :])
 
             @jit_device_template("(complex128[:, :], complex128[:, :], float64[:, :], float64, float64, complex128[:])")
             def append_exponentiation_integration_magnus_cf4(time_evolution_fine, time_evolution_coarse, field_sample, time_step_integration, rotating_wave, rotating_wave_winding):
@@ -554,17 +606,17 @@ class Simulator:
             append_exponentiation_integration = append_exponentiation_integration_magnus_cf4
 
         elif integration_method == IntegrationMethod.HALF_STEP:
-            @jit_device_template("(float64, float64, float64, float64, float64[:, :], float64, complex128[:])")
-            def get_field_integration_half_step(sweep_parameter, time_fine, time_coarse, time_step_integration, field_sample, rotating_wave, rotating_wave_winding):
+            @jit_device_template("(float64[:], float64, float64, float64, float64[:, :], float64, complex128[:])")
+            def get_field_integration_half_step(sweep_parameters, time_fine, time_coarse, time_step_integration, field_sample, rotating_wave, rotating_wave_winding):
                 time_sample = time_fine - time_coarse
                 rotating_wave_winding[0] = cmath.exp(1j*rotating_wave*time_sample)
                 time_sample += time_coarse
-                get_field_jit(time_sample, sweep_parameter, field_sample[0, :])
+                get_field_jit(time_sample, sweep_parameters, field_sample[0, :])
 
                 time_sample = time_fine + time_step_integration - time_coarse
                 rotating_wave_winding[1] = cmath.exp(1j*rotating_wave*time_sample)
                 time_sample += time_coarse
-                get_field_jit(time_sample, sweep_parameter, field_sample[1, :])
+                get_field_jit(time_sample, sweep_parameters, field_sample[1, :])
 
             @jit_device_template("(complex128[:, :], complex128[:, :], float64[:, :], float64, float64, complex128[:])")
             def append_exponentiation_integration_half_step(time_evolution_fine, time_evolution_coarse, field_sample, time_step_integration, rotating_wave, rotating_wave_winding):
@@ -591,12 +643,12 @@ class Simulator:
             append_exponentiation_integration = append_exponentiation_integration_half_step
 
         elif integration_method == IntegrationMethod.MIDPOINT_SAMPLE:
-            @jit_device_template("(float64, float64, float64, float64, float64[:, :], float64, complex128[:])")
-            def get_field_integration_midpoint(sweep_parameter, time_fine, time_coarse, time_step_integration, field_sample, rotating_wave, rotating_wave_winding):
+            @jit_device_template("(float64[:], float64, float64, float64, float64[:, :], float64, complex128[:])")
+            def get_field_integration_midpoint(sweep_parameters, time_fine, time_coarse, time_step_integration, field_sample, rotating_wave, rotating_wave_winding):
                 time_sample = time_fine + 0.5*time_step_integration - time_coarse
                 rotating_wave_winding[0] = cmath.exp(1j*rotating_wave*time_sample)
                 time_sample += time_coarse
-                get_field_jit(time_sample, sweep_parameter, field_sample[0, :])
+                get_field_jit(time_sample, sweep_parameters, field_sample[0, :])
 
             @jit_device_template("(complex128[:, :], complex128[:, :], float64[:, :], float64, float64, complex128[:])")
             def append_exponentiation_integration_midpoint(time_evolution_fine, time_evolution_coarse, field_sample, time_step_integration, rotating_wave, rotating_wave_winding):
@@ -613,8 +665,8 @@ class Simulator:
             get_field_integration = get_field_integration_midpoint
             append_exponentiation_integration = append_exponentiation_integration_midpoint
 
-        @jit_device_template("(int64, float64[:], float64, float64, float64[:], complex128[:, :, :], float64)")
-        def get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_coarse, sweep_parameter):
+        @jit_device_template("(int64, float64[:], float64, float64, float64[:], complex128[:, :, :], float64[:])")
+        def get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_coarse, sweep_parameters):
             # Declare variables
             if device_index == 0:
                 time_evolution_fine = np.empty((dimension, dimension), dtype = np.complex128)
@@ -643,14 +695,14 @@ class Simulator:
             field_sample[0, 2] = 0
             if use_rotating_frame:
                 time_sample = time_coarse[time_index] + time_step_output/2
-                get_field_jit(time_sample, sweep_parameter, field_sample[0, :])
+                get_field_jit(time_sample, sweep_parameters, field_sample[0, :])
             rotating_wave = field_sample[0, 2]
             if dimension == 2:
                 rotating_wave /= 2
 
             # For every fine step
             for time_fine_index in range(math.floor(time_step_output/time_step_integration + 0.5)):
-                get_field_integration(sweep_parameter, time_fine, time_coarse[time_index], time_step_integration, field_sample, rotating_wave, rotating_wave_winding)
+                get_field_integration(sweep_parameters, time_fine, time_coarse[time_index], time_step_integration, field_sample, rotating_wave, rotating_wave_winding)
                 append_exponentiation_integration(time_evolution_fine, time_evolution_coarse[time_index, :], field_sample, time_step_integration, rotating_wave, rotating_wave_winding)
 
                 time_fine += time_step_integration
@@ -677,14 +729,14 @@ class Simulator:
                     time_evolution_coarse[time_index, 1, 0] *= rotating_wave_winding[0]
                     time_evolution_coarse[time_index, 1, 1] *= rotating_wave_winding[0]
 
-        @jit_host("(float64, float64[:], float64[:], float64, float64, complex128[:, :, :])", max_registers)
-        def get_time_evolution(sweep_parameter, time_coarse, time_end_points, time_step_integration, time_step_output, time_evolution_coarse):
+        @jit_host("(float64[:], float64[:], float64[:], float64, float64, complex128[:, :, :])", max_registers)
+        def get_time_evolution(sweep_parameters, time_coarse, time_end_points, time_step_integration, time_step_output, time_evolution_coarse):
             """
             Find the stepwise time evolution opperator.
 
             Parameters
             ----------
-            sweep_parameter : :obj:`float`
+            sweep_parameters : :obj:`numpy.ndarray` of :obj:`numpy.float64`
 
             time_coarse : :class:`numpy.ndarray` of :class:`numpy.float64` (time_index)
                 A coarse grained list of time samples that the time evolution operator is found for. In units of s. This is an output, so use an empty :class:`numpy.ndarray` with :func:`numpy.empty()`, or declare a :class:`numpy.ndarray` using :func:`numba.cuda.device_array_like()`.
@@ -700,17 +752,17 @@ class Simulator:
 
             if device_index == 0:
                 for time_index in nb.prange(time_coarse.size):
-                    get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_coarse, sweep_parameter)
+                    get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_coarse, sweep_parameters)
             elif device_index == 1:
                 # Run calculation for each coarse timestep in parallel
                 time_index = cuda.grid(1)
                 if time_index < time_coarse.size:
-                    get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_coarse, sweep_parameter)
+                    get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_coarse, sweep_parameters)
             elif device_index == 2:
                 # Run calculation for each coarse timestep in parallel
                 time_index = roc.get_global_id(1)
                 if time_index < time_coarse.size:
-                    get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_coarse, sweep_parameter)
+                    get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_coarse, sweep_parameters)
             return
 
         @jit_host("(complex128[:, :], float64[:, :])", max_registers = max_registers)
@@ -805,14 +857,14 @@ class Simulator:
         self.get_time_evolution_raw = get_time_evolution
         self.spin_calculator = spin_calculator
 
-    def evaluate(self, sweep_parameter, time_start, time_end, time_step_integration, time_step_output, state_init):
+    def evaluate(self, time_start, time_end, time_step_integration, time_step_output, state_init, sweep_parameters = np.empty(0)):
         """
         Integrates the time dependent Schroedinger equation and returns the quantum state of the spin system over time.
 
         Parameters
         ----------
-        sweep_parameter : :obj:`float`
-            The input to the `get_field` function supplied by the user. Modifies the field function so the integrator can be used for many experiments, without the need for slow recompilation. For example, if the `sweep_parameter` is used to define the bias field strength in `get_field`, then one can run many simulations, sweeping through bias values, by calling this method multiple times, each time varying `sweep_parameter`.
+        sweep_parameters : :obj:`numpy.ndarray` of :obj:`numpy.float64`
+            The input to the `get_field` function supplied by the user. Modifies the field function so the integrator can be used for many experiments, without the need for slow recompilation. For example, if the `sweep_parameters` is used to define the bias field strength in `get_field`, then one can run many simulations, sweeping through bias values, by calling this method multiple times, each time varying `sweep_parameters`.
         time_start : :obj:`float`
             The time offset that the experiment is to start at. Measured in s.
         time_end : :obj:`float`
@@ -830,29 +882,32 @@ class Simulator:
             An object containing the results of the simulation.
         """
         if math.fabs(time_step_output/time_step_integration - round(time_step_output/time_step_integration)) > 1e-6:
-            print(f"\033[33mspinsim warning: time_step_output not an integer multiple of time_step_integration. Resetting time_step_integration to {time_step_output/round(time_step_output/time_step_integration):8.4e}.\033[0m\n")
-        time_step_integration = time_step_output/round(time_step_output/time_step_integration)
-
+            time_step_integration_old = time_step_integration
+            time_step_integration = time_step_output/round(max(time_step_output/time_step_integration, 1))
+            print(f"\033[33mspinsim warning!!!\ntime_step_output ({time_step_output:8.4e}) not an integer multiple of time_step_integration ({time_step_integration_old:8.4e}). Resetting time_step_integration to {time_step_integration:8.4e}.\033[0m\n")
 
         time_end_points = np.asarray([time_start, time_end], np.float64)
         state_init = np.asarray(state_init, np.complex128)
+        sweep_parameters = np.asarray(sweep_parameters, np.complex128)
 
         time_index_max = int((time_end_points[1] - time_end_points[0])/time_step_output)
         if self.device.index == 0:
             time = np.empty(time_index_max, np.float64)
             time_evolution_coarse = np.empty((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
 
-            self.get_time_evolution_raw(sweep_parameter, time, time_end_points, time_step_integration, time_step_output, time_evolution_coarse)
+            self.get_time_evolution_raw(sweep_parameters, time, time_end_points, time_step_integration, time_step_output, time_evolution_coarse)
 
         elif self.device == Device.CUDA:
             time = cuda.device_array(time_index_max, np.float64)
             time_evolution_coarse = cuda.device_array((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
 
+            sweep_parameters_device = cuda.to_device(sweep_parameters)
+
             blocks_per_grid = (time.size + (self.threads_per_block - 1)) // self.threads_per_block
             try:
-                self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](sweep_parameter, time, time_end_points, time_step_integration, time_step_output, time_evolution_coarse)
+                self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](sweep_parameters_device, time, time_end_points, time_step_integration, time_step_output, time_evolution_coarse)
             except:
-                print("\033[31mspinsim error: numba.cuda could not jit get_field function into a cuda device function.\033[0m\n")
+                print("\033[31mspinsim error!!!\nnumba.cuda could not jit get_field function into a cuda device function.\033[0m\n")
                 raise
 
             time_evolution_coarse = time_evolution_coarse.copy_to_host()
@@ -862,11 +917,13 @@ class Simulator:
             time = roc.device_array(time_index_max, np.float64)
             time_evolution_coarse = roc.device_array((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
 
+            sweep_parameters_device = roc.to_device(sweep_parameters)
+
             blocks_per_grid = (time.size + (self.threads_per_block - 1)) // self.threads_per_block
             try:
-                self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](sweep_parameter, time, time_end_points, time_step_integration, time_step_output, time_evolution_coarse)
+                self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](sweep_parameters_device, time, time_end_points, time_step_integration, time_step_output, time_evolution_coarse)
             except:
-                print("\033[31mspinsim error: numba.roc could not jit get_field function into a roc device function.\033[0m\n")
+                print("\033[31mspinsim error!!!\nnumba.roc could not jit get_field function into a roc device function.\033[0m\n")
                 raise
 
             time_evolution_coarse = time_evolution_coarse.copy_to_host()
@@ -1268,6 +1325,11 @@ class Utilities:
             # return -2*(math.sin((c + e)/2)**2) + 1j*math.sin(i)
             return (expm1i(c + e) + expm1i(-c + e))/2
 
+        @jit_device
+        def cos_m1(t):
+            # return (expm1i(t) + expm1i(-t))/2
+            return -2*(math.sin(t/2)**2)
+
         if spin_quantum_number == SpinQuantumNumber.HALF:
             @jit_device
             def norm2(z):
@@ -1403,6 +1465,9 @@ class Utilities:
                     # matrix_multiply(temporary, temporary, result)
                 # result[0, 0] += 1
                 # result[1, 1] += 1
+
+            def matrix_exponential_lie_trotter_8(field_sample, result, trotter_cutoff):
+                pass
 
             # @jit_device
             # def matrix_exponential_lie_trotter(field_sample, result, trotter_cutoff):
@@ -1660,6 +1725,125 @@ class Utilities:
                 # result[0, 0] += 1
                 # result[1, 1] += 1
                 # result[2, 2] += 1
+
+            @jit_device
+            def matrix_exponential_lie_trotter_8(field_sample, result, trotter_cutoff):
+                if device_index == 0:
+                    temporary_1 = np.empty((3, 3), dtype = np.complex128)
+                    temporary_2 = np.empty((3, 3), dtype = np.complex128)
+                elif device_index == 1:
+                    temporary_1 = cuda.local.array((3, 3), dtype = np.complex128)
+                    temporary_2 = cuda.local.array((3, 3), dtype = np.complex128)
+                elif device_index == 2:
+                    temporary_group_1 = roc.shared.array((threads_per_block, 3, 3), dtype = np.complex128)
+                    temporary_group_2 = roc.shared.array((threads_per_block, 3, 3), dtype = np.complex128)
+                    temporary_1 = temporary_group_1[roc.get_local_id(1), :, :]
+                    temporary_2 = temporary_group_2[roc.get_local_id(1), :, :]
+
+                hyper_cube_amount = math.ceil(trotter_cutoff/2)
+                if hyper_cube_amount < 0:
+                    hyper_cube_amount = 0
+                precision = 4**hyper_cube_amount
+
+                a = math.sqrt(field_sample[0]*field_sample[0] + field_sample[1]*field_sample[1])
+                if a > 0:
+                    ep = (field_sample[0] + 1j*field_sample[1])/a
+                    a = a/precision
+                    Sa = math.sin(a/2)
+                    sa = -1j*math.sin(a)/sqrt2             
+                    Cam1 = cos_m1(a/2)
+                else:
+                    ep = 1
+                    Sa = 0
+                    sa = 0
+                    Cam1 = 0
+
+                result[0, 0] = Cam1*(Cam1 + 2)
+                result[1, 0] = sa*ep
+                result[2, 0] = -(Sa*ep)**2
+
+                result[0, 1] = sa*conj(ep)
+                result[1, 1] = cos_m1(a)
+                result[2, 1] = sa*ep
+
+                result[0, 2] = -(Sa*conj(ep))**2
+                result[1, 2] = sa*conj(ep)
+                result[2, 2] = Cam1*(Cam1 + 2)
+
+                a = math.sqrt(field_sample[6]*field_sample[6] + field_sample[7]*field_sample[7])
+                if a > 0:
+                    ep = (field_sample[6] + 1j*field_sample[7])/a
+                    a = a/precision
+                    Sa = math.sin(a/2)
+                    sa = -1j*math.sin(a)/sqrt2             
+                    Cam1 = cos_m1(a/2)
+                else:
+                    ep = 1
+                    Sa = 0
+                    sa = 0
+                    Cam1 = 0
+
+                temporary_1[0, 0] = Cam1*(Cam1 + 2)
+                temporary_1[1, 0] = sa*ep
+                temporary_1[2, 0] = -(Sa*ep)**2
+
+                temporary_1[0, 1] = sa*conj(ep)
+                temporary_1[1, 1] = cos_m1(a)
+                temporary_1[2, 1] = -sa*ep
+
+                temporary_1[0, 2] = -(Sa*conj(ep))**2
+                temporary_1[1, 2] = -sa*conj(ep)
+                temporary_1[2, 2] = Cam1*(Cam1 + 2)
+
+                matrix_multiply_m1(result, temporary_1, temporary_2)
+
+                a = math.sqrt(field_sample[4]*field_sample[4] + field_sample[5]*field_sample[5])
+                if a > 0:
+                    ep = (field_sample[4] + 1j*field_sample[5])/a
+                    a = a/precision
+                    Sa = math.sin(a)        
+                    Cam1 = cos_m1(a)
+                else:
+                    ep = 1
+                    ep = 1
+                    Sa = 0
+                    sa = 0
+                    Cam1 = 0
+
+                result[0, 0] = Cam1
+                result[1, 0] = 0.0
+                result[2, 0] = -(Sa*ep)**2
+
+                result[0, 1] = sa*conj(ep)
+                result[1, 1] = 0.0
+                result[2, 1] = -sa*ep
+
+                result[0, 2] = -(Sa*conj(ep))**2
+                result[1, 2] = 0.0
+                result[2, 2] = Cam1
+
+                matrix_multiply_m1(result, temporary_2, temporary_1)
+
+                a = field_sample[2]/precision
+                ep = field_sample[3]/(3*precision)
+
+                temporary_2[0, 0] = expm1i(-a - ep)
+                temporary_2[1, 0] = 0.0
+                temporary_2[2, 0] = 0.0
+
+                temporary_2[0, 1] = 0.0
+                temporary_2[1, 1] = expm1i(2*ep)
+                temporary_2[2, 1] = 0.0
+
+                temporary_2[0, 2] = 0.0
+                temporary_2[1, 2] = 0.0
+                temporary_2[2, 2] = expm1i(a - ep)
+
+                matrix_multiply_m1(temporary_1, temporary_2, result)
+
+                for power_index in range(hyper_cube_amount):
+                    matrix_square_m1(result, temporary_1)
+                    matrix_square_m1(temporary_1, result)
             
             # @jit_device
             # def matrix_exponential_lie_trotter(field_sample, result, trotter_cutoff):
@@ -1716,4 +1900,5 @@ class Utilities:
         self.adjoint = adjoint
         self.matrix_exponential_analytic = matrix_exponential_analytic
         self.matrix_exponential_lie_trotter = matrix_exponential_lie_trotter
+        self.matrix_exponential_lie_trotter_8 = matrix_exponential_lie_trotter_8
         self.matrix_square_m1 = matrix_square_m1

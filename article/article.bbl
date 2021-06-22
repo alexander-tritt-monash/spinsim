@@ -46,6 +46,16 @@ Di Y, Wang Y, Wei H.
 \newblock Available from:
   \url{https://doi.org/10.1088%2F1751-8113%2F43%2F6%2F065303}.
 
+\bibitem{magnus_exponential_1954}
+Magnus W.
+\newblock On the exponential solution of differential equations for a linear
+  operator.
+\newblock Communications on Pure and Applied Mathematics. 1954;7(4):649--673.
+\newblock \_eprint:
+  https://onlinelibrary.wiley.com/doi/pdf/10.1002/cpa.3160070404.
+\newblock Available from:
+  \url{https://onlinelibrary.wiley.com/doi/abs/10.1002/cpa.3160070404}.
+
 \bibitem{blanes_magnus_2009}
 Blanes S, Casas F, Oteo JA, Ros J.
 \newblock The {Magnus} expansion and some of its applications.
@@ -79,6 +89,14 @@ alexander-tritt monash. alexander-tritt-monash/neural-sense; 2020.
 \newblock Available from:
   \url{https://github.com/alexander-tritt-monash/neural-sense}.
 
+\bibitem{johansson_qutip_2013}
+Johansson JR, Nation PD, Nori F.
+\newblock {QuTiP} 2: {A} {Python} framework for the dynamics of open quantum
+  systems.
+\newblock Computer Physics Communications. 2013 Apr;184(4):1234--1240.
+\newblock Available from:
+  \url{http://www.sciencedirect.com/science/article/pii/S0010465512003955}.
+
 \bibitem{wolfram_research_inc_mathematica_2020}
 Wolfram~Research I. Mathematica. Champaign, Illinois: Wolfram Research, Inc.;
   2020.
@@ -92,14 +110,6 @@ Virtanen P, Gommers R, Oliphant TE, Haberland M, Reddy T, Cournapeau D, et~al.
 \newblock Number: 3 Publisher: Nature Publishing Group.
 \newblock Available from:
   \url{https://www.nature.com/articles/s41592-019-0686-2}.
-
-\bibitem{johansson_qutip_2013}
-Johansson JR, Nation PD, Nori F.
-\newblock {QuTiP} 2: {A} {Python} framework for the dynamics of open quantum
-  systems.
-\newblock Computer Physics Communications. 2013 Apr;184(4):1234--1240.
-\newblock Available from:
-  \url{http://www.sciencedirect.com/science/article/pii/S0010465512003955}.
 
 \bibitem{noauthor_cuda_2012}
 {CUDA} {GPUs}; 2012.
