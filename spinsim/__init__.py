@@ -27,6 +27,8 @@ class SpinQuantumNumber(Enum):
         Dimension of the hilbert space the states with this spin belong to.
     label : :obj:`str`
         A text label that can be used for archiving.
+    plus_x, plus_y, plus_z, zero_x, zero_y, zero_z, minus_x, minus_y, minus_z : :obj:`numpy.ndarray` of :obj:`numpy.complex128`
+        Eigenstates of the spin operators for quick reference.
     """
 
     def __init__(self, value, dimension, label):
@@ -340,7 +342,7 @@ class Simulator:
         * **time_end_points** (:obj:`numpy.ndarray` of :obj:`numpy.float64` (start/end)) - The time offset that the experiment is to start at, and the time that the experiment is to finish at. Measured in s.
         * **time_step_integration** (:obj:`float`) - The integration time step. Measured in s.
         * **time_step_output** (:obj:`float`) - The sample resolution of the output timeseries for the state. Must be a whole number multiple of `time_step_integration`. Measured in s.
-        * **time_evolution_coarse** (:obj:`numpy.ndarray` of :obj:`numpy.float128` (time_index, y_index, x_index)) - The evaluated time evolution operator between each time step. See :ref:`architecture` for some information.
+        * **time_evolution_output** (:obj:`numpy.ndarray` of :obj:`numpy.float128` (time_index, y_index, x_index)) - The evaluated time evolution operator between each time step. See :ref:`architecture` for some information.
     spin_calculator : :obj:`callable`
         Calculates the expected spin projection (Bloch vector) over time for a given time series of a quantum state. This :obj:`callable` is passed to the :obj:`Results` object returned from :func:`Simulator.evaluate()`, and is executed there just in time if the `spin` property is needed. Compiled for chosen device on object constrution.
 
@@ -417,38 +419,56 @@ class Simulator:
         Parameters
         ----------
         get_field : :obj:`callable`
-            A python function that describes the field that the spin system is being put under. It must have three arguments:
+            A python function that describes the field that the spin system is being put under.
+            It must have three arguments:
             
             * **time_sample** (:obj:`float`) - the time to sample the field at, in units of s.
-            * **simulation_index** (:obj:`int`) - a parameter that can be swept over when multiple simulations need to be run. For example, it is used to sweep over dressing frequencies during the simulations that `spinsim` was designed for.
-            * **field_sample** (:class:`numpy.ndarray` of :class:`numpy.float64` (spatial_index)) the returned value of the field. This is a four dimensional vector, with the first three entries being x, y, z spatial directions (to model a magnetic field, for example), and the fourth entry being the amplitude of the quadratic shift (only appearing, and required, in spin one systems).
+            * **sweep_parameters** (:obj:`numpy.ndarray` of :obj:`numpy.float64`) - an array of parameters that can be swept over when multiple simulations need to be run.
+                For example, it is used to sweep over dressing frequencies during the magnetometry experiments that `spinsim` was designed for.
+            * **field_sample** (:class:`numpy.ndarray` of :class:`numpy.float64` (spatial_index)) the returned value of the field.
+                This is a four dimensional vector, with the first three entries being x, y, z spatial directions (to model a magnetic field, for example), and the fourth entry being the amplitude of the quadratic shift (only appearing, and required, in spin one systems).
 
             .. note::
-                This function must be compilable for the device that the integrator is being compiled for. See :class:`Device` for more information and links.
+                This function must be compilable for the device that the integrator is being compiled for.
+                See :class:`Device` for more information and links.
 
         spin_quantum_number : :obj:`SpinQuantumNumber`
             The option to select whether the simulator will integrate a spin half :obj:`SpinQuantumNumber.HALF`, or spin one :obj:`SpinQuantumNumber.ONE` quantum system.
         device : :obj:`Device`
-            The option to select which device will be targeted for integration. That is, whether the integrator is compiled for a CPU or GPU. Defaults to :obj:`Device.CUDA` if the system it is being run on is Nvidia Cuda compatible, and defaults to :obj:`Device.CPU` otherwise. See :obj:`Device` for all options and more details.
+            The option to select which device will be targeted for integration.
+            That is, whether the integrator is compiled for a CPU or GPU. Defaults to :obj:`Device.CUDA` if the system it is being run on is Nvidia Cuda compatible, and defaults to :obj:`Device.CPU` otherwise.
+            See :obj:`Device` for all options and more details.
         exponentiation_method : :obj:`ExponentiationMethod`
-            Which method to use for matrix exponentiation in the integration algorithm. Defaults to :obj:`ExponentiationMethod.LIE_TROTTER` when `spin_quantum_number` is set to :obj:`SpinQuantumNumber.ONE`, and defaults to :obj:`ExponentiationMethod.ANALYTIC` when `spin_quantum_number` is set to :obj:`SpinQuantumNumber.HALF`. See :obj:`ExponentiationMethod` for more details.
+            Which method to use for matrix exponentiation in the integration algorithm.
+            Defaults to :obj:`ExponentiationMethod.LIE_TROTTER` when `spin_quantum_number` is set to :obj:`SpinQuantumNumber.ONE`, and defaults to :obj:`ExponentiationMethod.ANALYTIC` when `spin_quantum_number` is set to :obj:`SpinQuantumNumber.HALF`.
+            See :obj:`ExponentiationMethod` for more details.
         use_rotating_frame : :obj:`bool`
-            Whether or not to use the rotating frame optimisation. Defaults to :obj:`True`. If set to :obj:`True`, the integrator moves into a frame rotating in the z axis by an amount defined by the field in the z direction. This removes the (possibly large) z component of the field, which increases the accuracy of the output since the integrator will on average take smaller steps.
+            Whether or not to use the rotating frame optimisation. Defaults to :obj:`True`.
+            If set to :obj:`True`, the integrator moves into a frame rotating in the z axis by an amount defined by the field in the z direction.
+            This removes the (possibly large) z component of the field, which increases the accuracy of the output since the integrator will on average take smaller steps.
 
             .. note ::
 
-                The use of a rotating frame is commonly associated with the use of a rotating wave approximation, a technique used to get approximate analytic solutions of spin system dynamics. This is not done when this option is set to :obj:`True` - no such approximations are made, and the output state in given out of the rotating frame. One can, of course, use :mod:`spinsim` to integrate states in the rotating frame, using the rating wave approximation: just define `get_field()` with field functions that use the rotating wave approximation in the rotating frame.
+                The use of a rotating frame is commonly associated with the use of a rotating wave approximation, a technique used to get approximate analytic solutions of spin system dynamics. This is not done when this option is set to :obj:`True` - no such approximations are made, and the output state in given out of the rotating frame.
+                One can, of course, use :mod:`spinsim` to integrate states in the rotating frame, using the rating wave approximation: just define `get_field()` with field functions that use the rotating wave approximation in the rotating frame.
 
         integration_method : :obj:`IntegrationMethod`
-            Which integration method to use in the integration. Defaults to :obj:`IntegrationMethod.MAGNUS_CF4`. See :obj:`IntegrationMethod` for more details.
+            Which integration method to use in the integration.
+            Defaults to :obj:`IntegrationMethod.MAGNUS_CF4`. See :obj:`IntegrationMethod` for more details.
         trotter_cutoff : :obj:`int`
             The number of squares made by the matrix exponentiator, if :obj:`ExponentiationMethod.LIE_TROTTER` is chosen.
         threads_per_block : :obj:`int`
-            The size of each thread block (workgroup), in terms of the number of threads (workitems) they each contain, when running on the GPU target devices :obj:`Device.CUDA` (:obj:`Device.ROC`). Defaults to 64. Modifying might be able to increase execution time for different GPU models.
+            The size of each thread block (workgroup), in terms of the number of threads (workitems) they each contain, when running on the GPU target devices :obj:`Device.CUDA` (:obj:`Device.ROC`).
+            Defaults to 64. Modifying might be able to increase execution time for different GPU models.
         max_registers : :obj:`int`
-            The maximum number of registers allocated per thread when using :obj:`Device.CUDA` as the target device, and can be modified to increase the execution speed for a specific GPU model. Defaults to 63 (optimal for GTX1070, the device used for testing. Note that one extra register per thread is always added to the number specified for control, so really this number is 64).
+            The maximum number of registers allocated per thread when using :obj:`Device.CUDA` as the target device, and can be modified to increase the execution speed for a specific GPU model.
+            Defaults to 63 (optimal for GTX1070, the device used for testing.
+            Note that one extra register per thread is always added to the number specified for control, so really this number is 64).
             
-            Raising this value allocates more registers (fast memory) to each thread, out of a maximum number for the whole GPU, for each specific GPU model. This means that if more registers are allocated than are available for the GPU model, the GPU must run fewer threads concurrently than it has Cuda cores, meaning some cores are inactive, and the GPU is said to have less occupancy. Lowering the value increases GPU occupancy, meaning more threads run concurrently, at the expense of fewer resgiters being avaliable to each thread, meaning slower memory must be used. Thus, there will be an optimal value of `max_registers` for each model of GPU running :mod:`spinsim`, balancing more threads vs faster running threads, and changing this value could increase performance for your GPU. See `Achieved Occupancy`_ for Nvidia's official explanation.
+            Raising this value allocates more registers (fast memory) to each thread, out of a maximum number for the whole GPU, for each specific GPU model.
+            This means that if more registers are allocated than are available for the GPU model, the GPU must run fewer threads concurrently than it has Cuda cores, meaning some cores are inactive, and the GPU is said to have less occupancy.
+            Lowering the value increases GPU occupancy, meaning more threads run concurrently, at the expense of fewer registers being avaliable to each thread, meaning slower memory must be used. Thus, there will be an optimal value of `max_registers` for each model of GPU running :mod:`spinsim`, balancing more threads vs faster running threads, and changing this value could increase performance for your GPU.
+            See `Achieved Occupancy`_ for Nvidia's official explanation.
         """
         utilities = Utilities(spin_quantum_number, device, threads_per_block)
         conj = utilities.conj
@@ -504,7 +524,7 @@ class Simulator:
             exponentiation_method = ExponentiationMethod.LIE_TROTTER
             exponentiation_method_index = 1
         @jit_device_template("(float64[:], complex128[:, :], complex128[:, :])")
-        def append_exponentiation(field_sample, time_evolution_fine, time_evolution_coarse):
+        def append_exponentiation(field_sample, time_evolution_fine, time_evolution_output):
             if device_index == 0:
                 time_evolution_old = np.empty((dimension, dimension), dtype = np.complex128)
             elif device_index == 1:
@@ -522,8 +542,8 @@ class Simulator:
                 matrix_exponential_lie_trotter_8(field_sample, time_evolution_fine, trotter_cutoff)
 
             # Premultiply to the exitsing time evolution operator
-            set_to(time_evolution_coarse, time_evolution_old)
-            matrix_multiply_m1(time_evolution_fine, time_evolution_old, time_evolution_coarse)
+            set_to(time_evolution_output, time_evolution_old)
+            matrix_multiply_m1(time_evolution_fine, time_evolution_old, time_evolution_output)
 
         if use_rotating_frame:
             if dimension == 3:
@@ -579,7 +599,7 @@ class Simulator:
                 get_field_jit(time_sample, sweep_parameters, field_sample[1, :])
 
             @jit_device_template("(complex128[:, :], complex128[:, :], float64[:, :], float64, float64, complex128[:])")
-            def append_exponentiation_integration_magnus_cf4(time_evolution_fine, time_evolution_coarse, field_sample, time_step_integration, rotating_wave, rotating_wave_winding):
+            def append_exponentiation_integration_magnus_cf4(time_evolution_fine, time_evolution_output, field_sample, time_step_integration, rotating_wave, rotating_wave_winding):
                 transform_frame(field_sample[0, :], rotating_wave, rotating_wave_winding[0])
                 transform_frame(field_sample[1, :], rotating_wave, rotating_wave_winding[1])
 
@@ -592,7 +612,7 @@ class Simulator:
                 if dimension > 2:
                     field_sample[2, 3] = time_step_integration*(w0*field_sample[0, 3] + w1*field_sample[1, 3])
 
-                append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_coarse)
+                append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_output)
 
                 field_sample[2, 0] = time_step_integration*(w1*field_sample[0, 0] + w0*field_sample[1, 0])
                 field_sample[2, 1] = time_step_integration*(w1*field_sample[0, 1] + w0*field_sample[1, 1])
@@ -600,7 +620,7 @@ class Simulator:
                 if dimension > 2:
                     field_sample[2, 3] = time_step_integration*(w1*field_sample[0, 3] + w0*field_sample[1, 3])
 
-                append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_coarse)
+                append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_output)
 
             get_field_integration = get_field_integration_magnus_cf4
             append_exponentiation_integration = append_exponentiation_integration_magnus_cf4
@@ -619,7 +639,7 @@ class Simulator:
                 get_field_jit(time_sample, sweep_parameters, field_sample[1, :])
 
             @jit_device_template("(complex128[:, :], complex128[:, :], float64[:, :], float64, float64, complex128[:])")
-            def append_exponentiation_integration_half_step(time_evolution_fine, time_evolution_coarse, field_sample, time_step_integration, rotating_wave, rotating_wave_winding):
+            def append_exponentiation_integration_half_step(time_evolution_fine, time_evolution_output, field_sample, time_step_integration, rotating_wave, rotating_wave_winding):
                 transform_frame(field_sample[0, :], rotating_wave, rotating_wave_winding[0])
                 transform_frame(field_sample[1, :], rotating_wave, rotating_wave_winding[1])
                 
@@ -629,7 +649,7 @@ class Simulator:
                 if dimension > 2:
                     field_sample[2, 3] = time_step_integration*field_sample[0, 3]/2
 
-                append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_coarse)
+                append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_output)
 
                 field_sample[2, 0] = time_step_integration*field_sample[1, 0]/2
                 field_sample[2, 1] = time_step_integration*field_sample[1, 1]/2
@@ -637,7 +657,7 @@ class Simulator:
                 if dimension > 2:
                     field_sample[2, 3] = time_step_integration*field_sample[1, 3]/2
 
-                append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_coarse)
+                append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_output)
 
             get_field_integration = get_field_integration_half_step
             append_exponentiation_integration = append_exponentiation_integration_half_step
@@ -651,7 +671,7 @@ class Simulator:
                 get_field_jit(time_sample, sweep_parameters, field_sample[0, :])
 
             @jit_device_template("(complex128[:, :], complex128[:, :], float64[:, :], float64, float64, complex128[:])")
-            def append_exponentiation_integration_midpoint(time_evolution_fine, time_evolution_coarse, field_sample, time_step_integration, rotating_wave, rotating_wave_winding):
+            def append_exponentiation_integration_midpoint(time_evolution_fine, time_evolution_output, field_sample, time_step_integration, rotating_wave, rotating_wave_winding):
                 transform_frame(field_sample[0, :], rotating_wave, rotating_wave_winding[0])
                 
                 field_sample[0, 0] = time_step_integration*field_sample[0, 0]
@@ -660,13 +680,13 @@ class Simulator:
                 if dimension > 2:
                     field_sample[0, 3] = time_step_integration*field_sample[0, 3]
 
-                append_exponentiation(field_sample[0, :], time_evolution_fine, time_evolution_coarse)
+                append_exponentiation(field_sample[0, :], time_evolution_fine, time_evolution_output)
 
             get_field_integration = get_field_integration_midpoint
             append_exponentiation_integration = append_exponentiation_integration_midpoint
 
         @jit_device_template("(int64, float64[:], float64, float64, float64[:], complex128[:, :, :], float64[:])")
-        def get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_coarse, sweep_parameters):
+        def get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_output, sweep_parameters):
             # Declare variables
             if device_index == 0:
                 time_evolution_fine = np.empty((dimension, dimension), dtype = np.complex128)
@@ -691,7 +711,7 @@ class Simulator:
             time_fine = time_coarse[time_index]
 
             # Initialise time evolution operator to 1
-            set_to_zero(time_evolution_coarse[time_index, :])
+            set_to_zero(time_evolution_output[time_index, :])
             field_sample[0, 2] = 0
             if use_rotating_frame:
                 time_sample = time_coarse[time_index] + time_step_output/2
@@ -703,34 +723,34 @@ class Simulator:
             # For every fine step
             for time_fine_index in range(math.floor(time_step_output/time_step_integration + 0.5)):
                 get_field_integration(sweep_parameters, time_fine, time_coarse[time_index], time_step_integration, field_sample, rotating_wave, rotating_wave_winding)
-                append_exponentiation_integration(time_evolution_fine, time_evolution_coarse[time_index, :], field_sample, time_step_integration, rotating_wave, rotating_wave_winding)
+                append_exponentiation_integration(time_evolution_fine, time_evolution_output[time_index, :], field_sample, time_step_integration, rotating_wave, rotating_wave_winding)
 
                 time_fine += time_step_integration
 
             # Exit from m1 domain
-            time_evolution_coarse[time_index, 0, 0] += 1
-            time_evolution_coarse[time_index, 1, 1] += 1
+            time_evolution_output[time_index, 0, 0] += 1
+            time_evolution_output[time_index, 1, 1] += 1
             if dimension > 2:
-                time_evolution_coarse[time_index, 2, 2] += 1
+                time_evolution_output[time_index, 2, 2] += 1
 
             if use_rotating_frame:
                 # Take out of rotating frame
                 rotating_wave_winding[0] = cmath.exp(1j*rotating_wave*time_step_output)
 
-                time_evolution_coarse[time_index, 0, 0] /= rotating_wave_winding[0]
-                time_evolution_coarse[time_index, 0, 1] /= rotating_wave_winding[0]
+                time_evolution_output[time_index, 0, 0] /= rotating_wave_winding[0]
+                time_evolution_output[time_index, 0, 1] /= rotating_wave_winding[0]
                 if dimension > 2:
-                    time_evolution_coarse[time_index, 0, 2] /= rotating_wave_winding[0]
+                    time_evolution_output[time_index, 0, 2] /= rotating_wave_winding[0]
 
-                    time_evolution_coarse[time_index, 2, 0] *= rotating_wave_winding[0]
-                    time_evolution_coarse[time_index, 2, 1] *= rotating_wave_winding[0]
-                    time_evolution_coarse[time_index, 2, 2] *= rotating_wave_winding[0]
+                    time_evolution_output[time_index, 2, 0] *= rotating_wave_winding[0]
+                    time_evolution_output[time_index, 2, 1] *= rotating_wave_winding[0]
+                    time_evolution_output[time_index, 2, 2] *= rotating_wave_winding[0]
                 else:
-                    time_evolution_coarse[time_index, 1, 0] *= rotating_wave_winding[0]
-                    time_evolution_coarse[time_index, 1, 1] *= rotating_wave_winding[0]
+                    time_evolution_output[time_index, 1, 0] *= rotating_wave_winding[0]
+                    time_evolution_output[time_index, 1, 1] *= rotating_wave_winding[0]
 
         @jit_host("(float64[:], float64[:], float64[:], float64, float64, complex128[:, :, :])", max_registers)
-        def get_time_evolution(sweep_parameters, time_coarse, time_end_points, time_step_integration, time_step_output, time_evolution_coarse):
+        def get_time_evolution(sweep_parameters, time_coarse, time_end_points, time_step_integration, time_step_output, time_evolution_output):
             """
             Find the stepwise time evolution opperator.
 
@@ -739,30 +759,38 @@ class Simulator:
             sweep_parameters : :obj:`numpy.ndarray` of :obj:`numpy.float64`
 
             time_coarse : :class:`numpy.ndarray` of :class:`numpy.float64` (time_index)
-                A coarse grained list of time samples that the time evolution operator is found for. In units of s. This is an output, so use an empty :class:`numpy.ndarray` with :func:`numpy.empty()`, or declare a :class:`numpy.ndarray` using :func:`numba.cuda.device_array_like()`.
+                A coarse grained list of time samples that the time evolution operator is found for.
+                In units of s.
+                This is an output, so use an empty :class:`numpy.ndarray` with :func:`numpy.empty()`, or declare a :class:`numpy.ndarray` using :func:`numba.cuda.device_array_like()`.
             time_end_points : :class:`numpy.ndarray` of :class:`numpy.float64` (start time (0) or end time (1))
-                The time values for when the experiment is to start and finishes. In units of s.
+                The time values for when the experiment is to start and finishes.
+                In units of s.
             time_step_integration : :obj:`float`
-                The time step used within the integration algorithm. In units of s.
+                The time step used within the integration algorithm.
+                In units of s.
             time_step_output : :obj:`float`
-                The time difference between each element of `time_coarse`. In units of s. Determines the sample rate of the outputs `time_coarse` and `time_evolution_coarse`.
-            time_evolution_coarse : :class:`numpy.ndarray` of :class:`numpy.complex128` (time_index, bra_state_index, ket_state_index)
-                Time evolution operator (matrix) between the current and next timesteps, for each time sampled. See :math:`U(t)` in :ref:`overview_of_simulation_method`. This is an output, so use an empty :class:`numpy.ndarray` with :func:`numpy.empty()`, or declare a :class:`numpy.ndarray` using :func:`numba.cuda.device_array_like()`.
+                The time difference between each element of `time_coarse`.
+                In units of s.
+                Determines the sample rate of the outputs `time_coarse` and `time_evolution_output`.
+            time_evolution_output : :class:`numpy.ndarray` of :class:`numpy.complex128` (time_index, bra_state_index, ket_state_index)
+                Time evolution operator (matrix) between the current and next timesteps, for each time sampled.
+                See :math:`U(t)` in :ref:`overview_of_simulation_method`.
+                This is an output, so use an empty :class:`numpy.ndarray` with :func:`numpy.empty()`, or declare a :class:`numpy.ndarray` using :func:`numba.cuda.device_array_like()`.
             """
 
             if device_index == 0:
                 for time_index in nb.prange(time_coarse.size):
-                    get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_coarse, sweep_parameters)
+                    get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_output, sweep_parameters)
             elif device_index == 1:
                 # Run calculation for each coarse timestep in parallel
                 time_index = cuda.grid(1)
                 if time_index < time_coarse.size:
-                    get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_coarse, sweep_parameters)
+                    get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_output, sweep_parameters)
             elif device_index == 2:
                 # Run calculation for each coarse timestep in parallel
                 time_index = roc.get_global_id(1)
                 if time_index < time_coarse.size:
-                    get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_coarse, sweep_parameters)
+                    get_time_evolution_loop(time_index, time_coarse, time_step_output, time_step_integration, time_end_points, time_evolution_output, sweep_parameters)
             return
 
         @jit_host("(complex128[:, :], float64[:, :])", max_registers = max_registers)
@@ -795,9 +823,11 @@ class Simulator:
             Parameters
             ----------
             state : :class:`numpy.ndarray` of :class:`numpy.complex128` (time_index, state_index)
-                The state (wavefunction) of the spin system in the lab frame, for each time sampled. See :math:`\\psi(t)` in :ref:`overview_of_simulation_method`.
+                The state (wavefunction) of the spin system in the lab frame, for each time sampled.
+                See :math:`\\psi(t)` in :ref:`overview_of_simulation_method`.
             spin : :class:`numpy.ndarray` of :class:`numpy.float64` (time_index, spatial_index)
-                The expected value for hyperfine spin of the spin system in the lab frame, for each time sampled. Units of :math:`\\hbar`. This is an output, so use an empty :class:`numpy.ndarray` with :func:`numpy.empty()`, or declare a :class:`numpy.ndarray` using :func:`numba.cuda.device_array_like()`.
+                The expected value for hyperfine spin of the spin system in the lab frame, for each time sampled.
+                Units of :math:`\\hbar`. This is an output, so use an empty :class:`numpy.ndarray` with :func:`numpy.empty()`, or declare a :class:`numpy.ndarray` using :func:`numba.cuda.device_array_like()`.
             """
             if device_index == 0:
                 for time_index in nb.prange(spin.shape[0]):
@@ -864,15 +894,21 @@ class Simulator:
         Parameters
         ----------
         sweep_parameters : :obj:`numpy.ndarray` of :obj:`numpy.float64`
-            The input to the `get_field` function supplied by the user. Modifies the field function so the integrator can be used for many experiments, without the need for slow recompilation. For example, if the `sweep_parameters` is used to define the bias field strength in `get_field`, then one can run many simulations, sweeping through bias values, by calling this method multiple times, each time varying `sweep_parameters`.
+            The input to the `get_field` function supplied by the user.
+            Modifies the field function so the integrator can be used for many experiments, without the need for slow recompilation. For example, if the `sweep_parameters` is used to define the bias field strength in `get_field`, then one can run many simulations, sweeping through bias values, by calling this method multiple times, each time varying `sweep_parameters`.
         time_start : :obj:`float`
-            The time offset that the experiment is to start at. Measured in s.
+            The time offset that the experiment is to start at.
+            Measured in s.
         time_end : :obj:`float`
-            The time that the experiment is to finish at. Measured in s. The duration of the experiment is `time_end - time_start`.
+            The time that the experiment is to finish at.
+            Measured in s.
+            The duration of the experiment is `time_end - time_start`.
         time_step_integration : :obj:`float`
             The integration time step. Measured in s.
         time_step_output : :obj:`float`
-            The sample resolution of the output timeseries for the state. Must be a whole number multiple of `time_step_integration`. Measured in s.
+            The sample resolution of the output timeseries for the state.
+            Must be a whole number multiple of `time_step_integration`.
+            Measured in s.
         state_init : :obj:`numpy.ndarray` of :obj:`numpy.complex128` (magnetic_quantum_number)
             The initial quantum state of the spin system, written in terms of the eigenstates of the spin projection operator in the z direction.
 
@@ -893,46 +929,46 @@ class Simulator:
         time_index_max = int((time_end_points[1] - time_end_points[0])/time_step_output)
         if self.device.index == 0:
             time = np.empty(time_index_max, np.float64)
-            time_evolution_coarse = np.empty((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
+            time_evolution_output = np.empty((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
 
-            self.get_time_evolution_raw(sweep_parameters, time, time_end_points, time_step_integration, time_step_output, time_evolution_coarse)
+            self.get_time_evolution_raw(sweep_parameters, time, time_end_points, time_step_integration, time_step_output, time_evolution_output)
 
         elif self.device == Device.CUDA:
             time = cuda.device_array(time_index_max, np.float64)
-            time_evolution_coarse = cuda.device_array((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
+            time_evolution_output = cuda.device_array((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
 
             sweep_parameters_device = cuda.to_device(sweep_parameters)
 
             blocks_per_grid = (time.size + (self.threads_per_block - 1)) // self.threads_per_block
             try:
-                self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](sweep_parameters_device, time, time_end_points, time_step_integration, time_step_output, time_evolution_coarse)
+                self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](sweep_parameters_device, time, time_end_points, time_step_integration, time_step_output, time_evolution_output)
             except:
                 print("\033[31mspinsim error!!!\nnumba.cuda could not jit get_field function into a cuda device function.\033[0m\n")
                 raise
 
-            time_evolution_coarse = time_evolution_coarse.copy_to_host()
+            time_evolution_output = time_evolution_output.copy_to_host()
             time = time.copy_to_host()
         
         elif self.device == Device.ROC:
             time = roc.device_array(time_index_max, np.float64)
-            time_evolution_coarse = roc.device_array((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
+            time_evolution_output = roc.device_array((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
 
             sweep_parameters_device = roc.to_device(sweep_parameters)
 
             blocks_per_grid = (time.size + (self.threads_per_block - 1)) // self.threads_per_block
             try:
-                self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](sweep_parameters_device, time, time_end_points, time_step_integration, time_step_output, time_evolution_coarse)
+                self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](sweep_parameters_device, time, time_end_points, time_step_integration, time_step_output, time_evolution_output)
             except:
                 print("\033[31mspinsim error!!!\nnumba.roc could not jit get_field function into a roc device function.\033[0m\n")
                 raise
 
-            time_evolution_coarse = time_evolution_coarse.copy_to_host()
+            time_evolution_output = time_evolution_output.copy_to_host()
             time = time.copy_to_host()
 
         state = np.empty((time_index_max, self.spin_quantum_number.dimension), np.complex128)
-        self.get_state(state_init, state, time_evolution_coarse)
+        self.get_state(state_init, state, time_evolution_output)
 
-        results = Results(time, time_evolution_coarse, state, self.spin_calculator)
+        results = Results(time, time_evolution_output, state, self.spin_calculator)
         return results
 
     @staticmethod
@@ -948,7 +984,8 @@ class Simulator:
         state : :class:`numpy.ndarray` of :class:`numpy.complex128` (time_index, state_index)
             The state (wavefunction) of the spin system in the lab frame, for each time sampled.
         time_evolution : :class:`numpy.ndarray` of :class:`numpy.complex128` (time_index, bra_state_index, ket_state_index)
-            The evaluated time evolution operator between each time step. See :ref:`architecture` for some information.
+            The evaluated time evolution operator between each time step.
+            See :ref:`architecture` for some information.
         """
         for time_index in range(state.shape[0]):
             # State = time evolution * previous state
@@ -966,7 +1003,8 @@ machine_epsilon = np.finfo(np.float64).eps*1000
 
 class Utilities:
     """
-    A on object that contains definitions of all of the device functions (functions compiled for use on the target device) used in the integrator. These device functions are compiled for the chosen target device on construction of the object.
+    A on object that contains definitions of all of the device functions (functions compiled for use on the target device) used in the integrator.
+    These device functions are compiled for the chosen target device on construction of the object.
 
     Attributes
     ----------
@@ -1003,6 +1041,41 @@ class Utilities:
         Returns
 
         * **az** (:class:`numpy.float64`) - The absolute value of z.
+
+    expm1i(b) : :obj:`callable`
+        For real input :math:`b`, returns :math:`\\exp(ib) - 1`, while avoiding floating point cancellation errors.
+
+        Parameters:
+
+        * **b** (:class:`numpy.float64`) - The imaginary component to exponentiate.
+        
+        Returns
+
+        * **em1i** (:class:`numpy.complex128`) - The evalauted output.
+
+    cos_exp_m1(a, b) : :obj:`callable`
+        For real input :math:`a`, :math:`b`, returns :math:`\\cos(a)\\exp(ib) - 1`, while avoiding floating point cancellation errors.
+
+        Parameters:
+
+        * **a** (:class:`numpy.float64`) - The real component to take the cosine of.
+
+        * **b** (:class:`numpy.float64`) - The imaginary component to exponentiate.
+        
+        Returns
+
+        * **cem1** (:class:`numpy.complex128`) - The evalauted output.
+
+    cos_m1(a, b) : :obj:`callable`
+        For real input :math:`a`, returns :math:`\\cos(a) - 1`, while avoiding floating point cancellation errors.
+
+        Parameters:
+
+        * **a** (:class:`numpy.float64`) - The real component to take the cosine of.
+        
+        Returns
+
+        * **cm1** (:class:`numpy.complex128`) - The evalauted output.
 
     norm2(z) : :obj:`callable`
         The 2 norm of a complex vector.
@@ -1092,6 +1165,43 @@ class Utilities:
         * **right** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - The matrix to right multiply by.
         * **result** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - A matrix to be filled with the result of the product.
 
+    matrix_square_m1(operator, result) : :obj:`callable`
+        For matrix :math:`A = 1 + a` :math:`S = A^2 = 1 + s`.
+        Here the input is the residuals :math:`a`, and the output is :math:`s`.
+        This is a way to evaluate :math:`s` without floating point cancellation error.
+        Specifically,
+
+        .. math::
+            \\begin{align*}
+            s &= S - 1\\\\
+            &= A^2 - 1\\\\
+            &= (2\\cdot 1 + a)a
+            \\end{align*}
+
+        Parameters:
+        
+        * **operator** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - The residual of the matrix to square.
+        * **result** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - A matrix to be filled with the residual of the result of the product.
+
+    matrix_multiply_m1(left, right, result) : :obj:`callable`
+        For matrices :math:`L = 1 + l` and :math:`R = 1 + r`, evaluates :math:`O = LR = 1 + o`.
+        Here the inputs are the residuals :math:`l` and :math:`r`, and the output is :math:`o`.
+        This is a way to evaluate :math:`o` without floating point cancellation error.
+        Specifically,
+
+        .. math::
+            \\begin{align*}
+            o &= O - 1\\\\
+            &= LR - 1\\\\
+            &= l + r + lr
+            \\end{align*}
+
+        Parameters:
+        
+        * **left** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - The residual of the matrix to left multiply by.
+        * **right** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - The residual of the  matrix to right multiply by.
+        * **result** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - A matrix to be filled with the residual of the result of the product.
+
     adjoint(operator) : :obj:`callable`
         Takes the hermitian adjoint of a matrix.
 
@@ -1113,13 +1223,14 @@ class Utilities:
 
         .. warning::
             
-            Only available for use with spin half systems. Will not work with spin one systems.
+            Only available for use with spin half systems.
+            Will not work with spin one systems.
 
         Assumes the exponent is an imaginary  linear combination of :math:`\\mathfrak{su}(2)`, being,
 
         .. math::
             \\begin{align*}
-                A &= -i(x J_x + y J_y + z J_z),
+                A &= -i(\\omega_x J_x + \\omega_y J_y + \\omega_z J_z),
             \\end{align*}
         
         with
@@ -1144,18 +1255,18 @@ class Utilities:
 
         .. math::
             \\begin{align*}
-                \\exp(A) &= \\exp(-ix J_x - iy J_y - iz J_z)\\\\
+                \\exp(A) &= \\exp(-i\\omega_x J_x - i\\omega_y J_y - i\\omega_z J_z)\\\\
                 &= \\begin{pmatrix}
-                    \\cos(\\frac{r}{2}) - i\\frac{z}{r}\\sin(\\frac{r}{2}) & -\\frac{y + ix}{r}\\sin(\\frac{r}{2})\\\\
-                    \\frac{y - ix}{r}\\sin(\\frac{r}{2}) & \\cos(\\frac{r}{2}) + i\\frac{z}{r}\\sin(\\frac{r}{2})
+                    \\cos(\\frac{\\omega_r}{2}) - i\\frac{\\omega_z}{\\omega_r}\\sin(\\frac{\\omega_r}{2}) & -\\frac{\\omega_y + i\\omega_x}{\\omega_r}\\sin(\\frac{\\omega_r}{2})\\\\
+                    \\frac{\\omega_y - i\\omega_x}{\\omega_r}\\sin(\\frac{\\omega_r}{2}) & \\cos(\\frac{\\omega_r}{2}) + i\\frac{\\omega_z}{\\omega_r}\\sin(\\frac{\\omega_r}{2})
                 \\end{pmatrix}
             \\end{align*}
 
-        with :math:`r = \\sqrt{x^2 + y^2 + z^2}`.
+        with :math:`\\omega_r = \\sqrt{\\omega_x^2 + \\omega_y^2 + \\omega_z^2}`.
 
         Parameters:
         
-        * **field_sample** (:class:`numpy.ndarray` of :class:`numpy.float64`, (y_index, x_index)) - The values of x, y and z respectively, as described above.
+        * **field_sample** (:class:`numpy.ndarray` of :class:`numpy.float64`, (y_index, x_index)) - The values of :math:`\\omega_x`, :math:`\\omega_y` and :math:`\\omega_z` respectively, as described above.
         * **result** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - The matrix which the result of the exponentiation is to be written to.
 
     matrix_exponential_lie_trotter(field_sample, result) : :obj:`callable`
@@ -1166,7 +1277,7 @@ class Utilities:
 
         **For spin half systems:**
 
-        Assumes the exponent is an imaginary  linear combination of a subspace of :math:`\\mathfrak{su}(2)`, being,
+        Assumes the exponent is an imaginary linear combination of a subspace of :math:`\\mathfrak{su}(2)`, being,
 
         .. math::
             \\begin{align*}
@@ -1220,7 +1331,7 @@ class Utilities:
 
         **For spin one systems**
 
-        Assumes the exponent is an imaginary  linear combination of a subspace of :math:`\\mathfrak{su}(3)`, being,
+        Assumes the exponent is an imaginary linear combination of a subspace of :math:`\\mathfrak{su}(3)`, being,
 
         .. math::
             \\begin{align*}
@@ -1288,6 +1399,17 @@ class Utilities:
         * **result** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - The matrix which the result of the exponentiation is to be written to.
         * **trotter_cutoff** (:obj:`int`) - The number of squares to make to the approximate matrix (:math:`\\tau` above).
 
+    matrix_exponential_lie_trotter_8(field_sample, result) : :obj:`callable`
+        Calculates a matrix exponential based on the Lie Product Formula,
+
+        .. math::
+            \\exp(A + B) = \\lim_{c \\to \\infty} \\left(\\exp\\left(\\frac{1}{c}A\\right) \\exp\\left(\\frac{1}{c}B\\right)\\right)^c.
+
+        Parameters:
+
+        * **field_sample** (:class:`numpy.ndarray` of :class:`numpy.float64`, (y_index, x_index)) - The values of x, y, z, q, u1, u2, v1 and v2 respectively, as described above.
+        * **result** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - The matrix which the result of the exponentiation is to be written to.
+        * **trotter_cutoff** (:obj:`int`) - The number of squares to make to the approximate matrix (:math:`\\tau` above).
     """
     def __init__(self, spin_quantum_number, device, threads_per_block):
         """

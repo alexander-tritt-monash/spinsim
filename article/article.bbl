@@ -46,6 +46,23 @@ Di Y, Wang Y, Wei H.
 \newblock Available from:
   \url{https://doi.org/10.1088%2F1751-8113%2F43%2F6%2F065303}.
 
+\bibitem{mockler_atomic_1961}
+Mockler RC.
+\newblock Atomic {Beam} {Frequency} {Standards}.
+\newblock In: Marton L, editor. Advances in {Electronics} and {Electron}
+  {Physics}. vol.~15. Academic Press; 1961. p. 1--71.
+\newblock Available from:
+  \url{https://www.sciencedirect.com/science/article/pii/S0065253908609312}.
+
+\bibitem{kalev_integral-free_2020}
+Kalev A, Hen I.
+\newblock An integral-free representation of the {Dyson} series using divided
+  differences.
+\newblock arXiv:201009888 [cond-mat, physics:hep-th, physics:math-ph,
+  physics:nucl-th, physics:quant-ph]. 2020 Oct.
+\newblock ArXiv: 2010.09888.
+\newblock Available from: \url{http://arxiv.org/abs/2010.09888}.
+
 \bibitem{magnus_exponential_1954}
 Magnus W.
 \newblock On the exponential solution of differential equations for a linear
