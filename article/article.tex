@@ -299,27 +299,39 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		\end{align}% \approx? Unitary? End with sentence
 
 	\subsection{Exponentiator}
-		From Equation \eqref{eq:cf4_implementation}, evaluating matrix exponentials is a core part of the integration algorithm.
-		However, the \emph{spinsim} package uses the user provided field functions \(\omega(t)\) as a vector representation of the Hamiltonian of the spin system being simulated, rather than generic matrix elements in an array.
-		This allows for implementation of matrix exponentiation that takes advantage of this representation.
-		For all implementations of exponentiation, the \emph{spinsim} computes the matrix exponential
-		\begin{align}
-			E(\omega) &= E(\omega_x, \omega_y, \omega_z, \omega_q)\\
-			&= \exp(-i (\omega_x J_x + \omega_y J_y + \omega_z J_z + \omega_q Q)).
-		\end{align}
-		In practice, \(\omega\) is the Lie algebra (spin and quadrature) basis representation of \(\overline{H_1}\) or \(\overline{H_2}\) defined in Equations \eqref{eq:cf4_sample_1} and \eqref{eq:cf4_sample_2}, which need to be exponentiated in Equation \eqref{eq:cf4_implementation}.
+		Evaluating matrix exponentials is a core part of the integration algorithm.
+		Rather than exponentiating the Hamiltonian directly as in Equation \eqref{eq:cf4_implementation}, \emph{spinsim} works with the field functions \(\omega_i(t)\).
+		% as a vector representation of the Hamiltonian of the spin system being simulated, rather than generic matrix elements in an array.
+		% This allows for matrix exponentiators that take advantage of this representation.
+		% For all implementations of exponentiation, the \emph{spinsim} computes the matrix exponential
+		% % \begin{align}
+		% % 	\exp(-iHt) &= E(\omega_x, \omega_y, \omega_z, \omega_q)\\
+		% % 	&= \exp(-i (\omega_x J_x + \omega_y J_y + \omega_z J_z + \omega_q Q)).
+		% % \end{align}
+		% \begin{align}
+		% 	\exp(-iHt) &= E(\omega_x, \omega_y, \omega_z, \omega_q)\\
+		% 	&= \exp(-i (\omega_x J_x + \omega_y J_y + \omega_z J_z + \omega_q Q)).
+		% \end{align}
+		% In practice, \(\omega\) is the Lie algebra (spin and quadrature) basis representation of \(\overline{H_1}\) or \(\overline{H_2}\) defined in Equations \eqref{eq:cf4_sample_1} and \eqref{eq:cf4_sample_2}, which need to be exponentiated in Equation \eqref{eq:cf4_implementation}.
 
-		For spin half, the default exponentiator is in an analytic form.
-		For spin one, an exponentiator based on the Lie Trotter product formula\cite{moler_nineteen_2003} is used instead.
-		Explicitly, this formula is
+		For spin-half, the default exponentiator is in an analytic form in \(\omega_x\).% ... yz, which follows directly from eqref
+		For spin-one, an exponentiator based on the Lie-Trotter product formula\cite{moler_nineteen_2003}
+		% Explicitly, this formula is
 		\begin{align}
-			\exp\left( X + Y\right) &= \lim_{n\to\infty} \left(\exp\left(\frac{X}{n}\right) \exp\left(\frac{Y}{n}\right)\right)^n
+			\exp\left( X + Y\right) &= \lim_{n\to\infty} \left(\exp\left(\frac{X}{n}\right) \exp\left(\frac{Y}{n}\right)\right)^n,\label{eq:lie_trotter}
 		\end{align}
-		Where \(X,Y\in\mathbb{C}^{N\times N}\) are matrix operators, and \(n\in\mathbb{N}\).
-		The equality holds for without the limit for all \(n\) if the operators commute, like it does for real and complex numbers.
-		This tells us that we can approximate a matrix exponential of a linear combination of spin operators by reducing the size of the coefficients of these operators, taking the analytically simple exponentials of each of the operators \(-iJ_x, -iJ_y, -iJ_z\) and \(-iQ\) separately, multiplying each individual result together, and then raising the combination \(T\) to the power of the original reduction.
-		
-		For our spin one case, the exponential \(E(\omega)\) can be approximated as, for large \(2^\tau\),
+		is used.
+		Here \(X,Y\in\mathbb{C}^{N\times N}\).
+		An advantage of the Lie-Trotter approach is that \(\exp(-iA_k/n)\) has known analytic forms for the Lie algebra basis elements \(A_k\).
+		Hence the unitary time evolution operator is approximated by \( U = \exp(iHt) \approx T^n \) where \( T= \exp(i \omega_x J_x / n) \exp(i \omega_y J_y / n) \dots \).
+		In fact, commutation relations between the Lie basis operators and Lie half step splitting allow us to write \(T = \exp(-iD_{z,q}/2n)\exp(-i\Phi J_\phi/n)\exp(-iD_{z,q}/2n)\) % Splitting methods
+		% The equality holds for the limit for all \(n\) if the operators commute, like it does for real and complex numbers.
+		% This tells us that we can approximate a matrix exponential of a linear combination of Hermitian operators by scaling down these operators, taking the analytically simple exponentials of each of the operators \(-iJ_x, -iJ_y, -iJ_z\) and \(-iQ\) separately, multiplying each individual result together, and then raising the combination \(T\) to the power of the original reduction.
+		% 2^{-\tau} -> n
+		% where X=Jx+iJy and Y=Qz+JZ
+		% Dz=Jz+Qzz
+
+		The exponential \(E(\omega)\) can be approximated as, for large \(2^\tau\),
 		\begin{align}
 			E(\omega) =& \exp\left(-i\omega_x J_x - i\omega_y J_y - i\omega_z J_z - i\omega_q Q\right)\\
 			=& \exp\left(2^{-\tau}\left(-i\omega_x J_x - i\omega_y J_y - i\omega_z J_z - i\omega_q Q\right)\right)^{2^\tau}\\
@@ -333,6 +345,18 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 			\end{pmatrix}^{2^\tau}\\
 			=& T^{2^\tau}.
 		\end{align}
+		% % Trotter half
+		% \begin{align}
+		% 	E(\omega) =& \exp\left(-i\omega_x J_x - i\omega_y J_y - i\omega_z J_z\right)\\
+		% 	=& \exp\left(2^{-\tau}\left(-i\omega_x J_x - i\omega_y J_y - i\omega_z J_z\right)\right)^{2^\tau}\\
+		% 	\approx& \biggl(\exp\left(-i\frac12 2^{-\tau} \omega_z J_z\right)\exp\left(-i\left(2^{-\tau} \omega_\phi J_\phi\right)\right)\exp\left(-i\frac12 2^{-\tau} \omega_z J_z\right)\biggr)^{2^\tau}\\
+		% 	=& \begin{pmatrix}
+		% 		\cos\left(\frac{\Phi}{2}\right)e^{-iz} & -i\sin\left(\frac{\Phi}{2}\right) e^{i\phi}\\
+		% 		-i\sin\left(\frac{\Phi}{2}\right) e^{-i\phi} & \cos\left(\frac{\Phi}{2}\right)e^{iz}
+		% 	\end{pmatrix}^{2^\tau}\\
+		% 	=& T^{2^\tau}.
+		% \end{align}
+		% % Trotter 8
 		% \begin{align}
 		% 	E(\omega) =& \exp\biggl(-i\omega_x J_x - i\omega_y J_y - i\omega_z J_z - i\omega_q Q\\
 		% 	&- i\omega_{u1} U_1 - i\omega_{u2} U_2 - i\omega_{v1} V_1 - i\omega_{v2} V_2\biggr)\\
@@ -362,7 +386,10 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		% 	\end{pmatrix}\biggr)^{2^\tau}\\
 		% 	=& T^{2^\tau}
 		% \end{align}
-		Here \(z = 2^{-\tau}\frac{\omega_z}{2}\), \(z = 2^{-\tau}\frac{\omega_q}{6}\), \(\phi = 2^{-\tau}\sqrt{\omega_x^2 + \omega_y^2}\), and \(\phi = \mathrm{atan}2(\omega_y, \omega_x)\).
+
+		Consequently matrix exponentiation ... raising T to appropriately large n.
+		Choice of n. n is large number, integer, power of 2. Efficiently by recursive squaring.
+		Here \(z = 2^{-\tau}\frac{\omega_z}{2}\), \(q = 2^{-\tau}\frac{\omega_q}{6}\), \(\phi = 2^{-\tau}\sqrt{\omega_x^2 + \omega_y^2}\), and \(\phi = \mathrm{atan}2(\omega_y, \omega_x)\).
 		Once \(T\) is calculated, it is then recursively squared \(\tau\) times to obtain \(E(\omega)\).
 		In practice the calculations here are done by finding the differences from the matrices from the identity to avoid floating point cancellation errors from subtracting a small number from 1.
 

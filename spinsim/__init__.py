@@ -354,7 +354,7 @@ class Simulator:
         
         * **spin** (:obj:`numpy.ndarray` of :obj:`numpy.float64` (time_index, spatial_direction)) - The expected spin projection (Bloch vector) over time.
     """
-    def __init__(self, get_field:callable, spin_quantum_number:SpinQuantumNumber, device:Device = None, exponentiation_method:ExponentiationMethod = None, use_rotating_frame:bool = True, integration_method:IntegrationMethod = IntegrationMethod.MAGNUS_CF4, trotter_cutoff:int = 32, threads_per_block:int = 64, max_registers:int = 63):
+    def __init__(self, get_field:callable, spin_quantum_number:SpinQuantumNumber, device:Device = None, exponentiation_method:ExponentiationMethod = None, use_rotating_frame:bool = True, integration_method:IntegrationMethod = IntegrationMethod.MAGNUS_CF4, number_of_squares:int = 28, threads_per_block:int = 64, max_registers:int = None):
         """
         .. _Achieved Occupancy: https://docs.nvidia.com/gameworks/content/developertools/desktop/analysis/report/cudaexperiments/kernellevel/achievedoccupancy.htm
 
@@ -385,15 +385,17 @@ class Simulator:
 
         integration_method : :obj:`IntegrationMethod`
             Which integration method to use in the integration. Defaults to :obj:`IntegrationMethod.MAGNUS_CF4`. See :obj:`IntegrationMethod` for more details.
-        trotter_cutoff : :obj:`int`
+        number_of_squares : :obj:`int`
             The number of squares made by the matrix exponentiator, if :obj:`ExponentiationMethod.LIE_TROTTER` is chosen.
         threads_per_block : :obj:`int`
             The size of each thread block (workgroup), in terms of the number of threads (workitems) they each contain, when running on the GPU target devices :obj:`Device.CUDA` (:obj:`Device.ROC`). Defaults to 64. Modifying might be able to increase execution time for different GPU models.
         max_registers : :obj:`int`
-            The maximum number of registers allocated per thread when using :obj:`Device.CUDA` as the target device, and can be modified to increase the execution speed for a specific GPU model. Defaults to 63 (optimal for GTX1070, the device used for testing. Note that one extra register per thread is always added to the number specified for control, so really this number is 64).
+            The maximum number of registers allocated per thread when using :obj:`Device.CUDA` as the target device, and can be modified to increase the execution speed for a specific GPU model.
             
             Raising this value allocates more registers (fast memory) to each thread, out of a maximum number for the whole GPU, for each specific GPU model. This means that if more registers are allocated than are available for the GPU model, the GPU must run fewer threads concurrently than it has Cuda cores, meaning some cores are inactive, and the GPU is said to have less occupancy. Lowering the value increases GPU occupancy, meaning more threads run concurrently, at the expense of fewer resgiters being avaliable to each thread, meaning slower memory must be used. Thus, there will be an optimal value of `max_registers` for each model of GPU running :mod:`spinsim`, balancing more threads vs faster running threads, and changing this value could increase performance for your GPU. See `Achieved Occupancy`_ for Nvidia's official explanation.
         """
+        # max_registers = 63
+        # Defaults to 63 (optimal for GTX1070, the device used for testing. Note that one extra register per thread is always added to the number specified for control, so really this number is 64).
         if not device:
             if cuda.is_available():
                 device = Device.CUDA
@@ -407,12 +409,12 @@ class Simulator:
         self.get_time_evolution_raw = None
         self.get_spin_raw = None
         try:
-            self.compile_time_evolver(get_field, spin_quantum_number, device, use_rotating_frame, integration_method, exponentiation_method, trotter_cutoff, threads_per_block, max_registers)
+            self.compile_time_evolver(get_field, spin_quantum_number, device, use_rotating_frame, integration_method, exponentiation_method, number_of_squares, threads_per_block, max_registers)
         except:
             print("\033[31mspinsim error!!!\nnumba could not jit get_field function into a device function.\033[0m\n")
             raise
 
-    def compile_time_evolver(self, get_field, spin_quantum_number, device, use_rotating_frame = True, integration_method = IntegrationMethod.MAGNUS_CF4, exponentiation_method = None, trotter_cutoff:int = 28, threads_per_block = 64, max_registers = 63):
+    def compile_time_evolver(self, get_field:callable, spin_quantum_number:SpinQuantumNumber, device:Device, use_rotating_frame:bool = True, integration_method:IntegrationMethod = IntegrationMethod.MAGNUS_CF4, exponentiation_method:ExponentiationMethod = None, number_of_squares:int = 28, threads_per_block:int = 64, max_registers:int = None):
         """
         Compiles the integrator and spin calculation functions of the simulator.
 
@@ -455,7 +457,7 @@ class Simulator:
         integration_method : :obj:`IntegrationMethod`
             Which integration method to use in the integration.
             Defaults to :obj:`IntegrationMethod.MAGNUS_CF4`. See :obj:`IntegrationMethod` for more details.
-        trotter_cutoff : :obj:`int`
+        number_of_squares : :obj:`int`
             The number of squares made by the matrix exponentiator, if :obj:`ExponentiationMethod.LIE_TROTTER` is chosen.
         threads_per_block : :obj:`int`
             The size of each thread block (workgroup), in terms of the number of threads (workitems) they each contain, when running on the GPU target devices :obj:`Device.CUDA` (:obj:`Device.ROC`).
@@ -470,7 +472,7 @@ class Simulator:
             Lowering the value increases GPU occupancy, meaning more threads run concurrently, at the expense of fewer registers being avaliable to each thread, meaning slower memory must be used. Thus, there will be an optimal value of `max_registers` for each model of GPU running :mod:`spinsim`, balancing more threads vs faster running threads, and changing this value could increase performance for your GPU.
             See `Achieved Occupancy`_ for Nvidia's official explanation.
         """
-        utilities = Utilities(spin_quantum_number, device, threads_per_block)
+        utilities = Utilities(spin_quantum_number, device, threads_per_block, number_of_squares)
         conj = utilities.conj
         complex_abs = utilities.complex_abs
         norm2 = utilities.norm2
@@ -537,13 +539,13 @@ class Simulator:
             if exponentiation_method_index == 0:
                 matrix_exponential_analytic(field_sample, time_evolution_fine)
             elif exponentiation_method_index == 1:
-                matrix_exponential_lie_trotter(field_sample, time_evolution_fine, trotter_cutoff)
+                matrix_exponential_lie_trotter(field_sample, time_evolution_fine)
             elif exponentiation_method_index == 2:
-                matrix_exponential_lie_trotter_8(field_sample, time_evolution_fine, trotter_cutoff)
+                matrix_exponential_lie_trotter_8(field_sample, time_evolution_fine)
 
             # Premultiply to the exitsing time evolution operator
             set_to(time_evolution_output, time_evolution_old)
-            matrix_multiply_m1(time_evolution_fine, time_evolution_old, time_evolution_output)
+            matrix_multiply(time_evolution_fine, time_evolution_old, time_evolution_output)
 
         if use_rotating_frame:
             if dimension == 3:
@@ -711,7 +713,7 @@ class Simulator:
             time_fine = time_coarse[time_index]
 
             # Initialise time evolution operator to 1
-            set_to_zero(time_evolution_output[time_index, :])
+            set_to_one(time_evolution_output[time_index, :])
             field_sample[0, 2] = 0
             if use_rotating_frame:
                 time_sample = time_coarse[time_index] + time_step_output/2
@@ -727,11 +729,11 @@ class Simulator:
 
                 time_fine += time_step_integration
 
-            # Exit from m1 domain
-            time_evolution_output[time_index, 0, 0] += 1
-            time_evolution_output[time_index, 1, 1] += 1
-            if dimension > 2:
-                time_evolution_output[time_index, 2, 2] += 1
+            # # Exit from m1 domain
+            # time_evolution_output[time_index, 0, 0] += 1
+            # time_evolution_output[time_index, 1, 1] += 1
+            # if dimension > 2:
+            #     time_evolution_output[time_index, 2, 2] += 1
 
             if use_rotating_frame:
                 # Take out of rotating frame
@@ -1281,7 +1283,7 @@ class Utilities:
 
         .. math::
             \\begin{align*}
-                A &= -i(x J_x + y J_y + z J_z),
+                A &= -i(\\omega_x J_x + \\omega_y J_y + \\omega_z J_z),
             \\end{align*}
         
         with
@@ -1306,28 +1308,17 @@ class Utilities:
 
         .. math::
             \\begin{align*}
-                \\exp(A) &= \\exp(-ix J_x - iy J_y - iz J_z)\\\\
-                &= \\exp(2^{-\\tau}(-ix J_x - iy J_y - iz J_z))^{2^\\tau}\\\\
-                &\\approx (\\exp(-i(2^{-\\tau} x) J_x) \\exp(-i(2^{-\\tau} y) J_y) \\exp(-i(2^{-\\tau} z) J_z)^{2^\\tau}\\\\
-                &= \\begin{pmatrix}
-                    (c_Xc_Y - is_Xs_Y) e^{-iZ} &
-                    -(c_Xs_Y + is_Xc_Y) e^{iZ} \\\\
-                    (c_Xs_Y - is_Xc_Y) e^{-iZ} &
-                    (c_Xc_Y + is_Xs_Y) e^{iZ}
-                \\end{pmatrix}^{2^\\tau}\\\\
-                &= T^{2^\\tau},
+                \\exp(A) =& \\exp\\left(-i\\omega_x J_x - i\\omega_y J_y - i\\omega_z J_z\\right)\\\\
+            =& \\exp\\left(2^{-\\tau}\\left(-i\\omega_x J_x - i\\omega_y J_y - i\\omega_z J_z\\right)\\right)^{2^\\tau}\\\\
+            \\approx& \\biggl(\\exp\\left(-i\\frac12 2^{-\\tau} \\omega_z J_z\\right)\\exp\\left(-i\\left(2^{-\\tau} \\omega_\\phi J_\\phi\\right)\\right)\\exp\\left(-i\\frac12 2^{-\\tau} \\omega_z J_z\\right)\\biggr)^{2^\\tau}\\\\
+            =& \\begin{pmatrix}
+                \\cos\\left(\\frac{\\Phi}{2}\\right)e^{-iz} & -i\\sin\\left(\\frac{\\Phi}{2}\\right) e^{i\\phi}\\\\
+                -i\\sin\\left(\\frac{\\Phi}{2}\\right) e^{-i\\phi} & \\cos\\left(\\frac{\\Phi}{2}\\right)e^{iz}
+            \\end{pmatrix}^{2^\\tau}\\\\
+            =& T^{2^\\tau}.
             \\end{align*}
 
-        with
-
-        .. math::
-            \\begin{align*}
-                X &= \\frac{1}{2}2^{-\\tau}x,\\\\
-                Y &= \\frac{1}{2}2^{-\\tau}y,\\\\
-                Z &= \\frac{1}{2}2^{-\\tau}z,\\\\
-                c_{\\theta} &= \\cos(\\theta),\\\\
-                s_{\\theta} &= \\sin(\\theta).
-            \\end{align*}
+        Here :math:`z = 2^{-\\tau}\\frac{\\omega_z}{2}`, :math:`\\Phi = 2^{-\\tau}\\sqrt{\\omega_x^2 + \\omega_y^2}`, and :math:`\\phi = \\mathrm{atan}2(\\omega_y, \\omega_x)`.
 
         **For spin one systems**
 
@@ -1335,7 +1326,7 @@ class Utilities:
 
         .. math::
             \\begin{align*}
-                A &= -i(x J_x + y J_y + z J_z + q J_q),
+                A &= -i(\\omega_x J_x + \\omega_y J_y + \\omega_z J_z + \\omega_q Q),
             \\end{align*}
         
         with
@@ -1357,7 +1348,7 @@ class Utilities:
                     0 & 0 &  0 \\\\
                     0 & 0 & -1
                 \\end{pmatrix},&
-                J_q &= \\frac{1}{3}\\begin{pmatrix}
+                Q &= \\frac{1}{3}\\begin{pmatrix}
                     1 &  0 & 0 \\\\
                     0 & -2 & 0 \\\\
                     0 &  0 & 1
@@ -1368,36 +1359,26 @@ class Utilities:
 
         .. math::
             \\begin{align*}
-                \\exp(A) &= \\exp(-ix J_x - iy J_y - iz J_z - iq J_q)\\\\
-                &= \\exp(2^{-\\tau}(-ix J_x - iy J_y - iz J_z - iq J_q))^{2^\\tau}\\\\
-                &\\approx (\\exp(-i(2^{-\\tau} x) J_x) \\exp(-i(2^{-\\tau} y) J_y) \\exp(-i(2^{-\\tau} z J_z + (2^{-\\tau} q) J_q)))^{2^\\tau}\\\\
-                &= \\begin{pmatrix}
-                    \\frac{e^{-i\\left(Z + \\frac{Q}{3}\\right)}(c_X + c_Y - i s_Xs_Y)}{2} & \\frac{e^{i\\frac{2Q}{3}} (-s_Y -i c_Y s_X)}{\\sqrt{2}} & \\frac{e^{-i\\left(-Z + \\frac{Q}{3}\\right)}(c_X - c_Y + i s_Xs_Y)}{2} \\\\
-                    \\frac{e^{-i\\left(Z + \\frac{Q}{3}\\right)} (-i s_X + c_X s_Y)}{\\sqrt{2}} & e^{i\\frac{2Q}{3}} c_X c_Y & \\frac{e^{-i(Z - \\frac{Q}{3})} (-i s_X - c_X s_Y)}{\\sqrt{2}} \\\\
-                    \\frac{e^{-i\\left(Z + \\frac{Q}{3}\\right)}(c_X - c_Y - i s_Xs_Y)}{2} & \\frac{e^{i\\frac{2Q}{3}} (s_Y -i c_Y s_X)}{\\sqrt{2}} & \\frac{e^{-i\\left(-Z + \\frac{Q}{3}\\right)}(c_X + c_Y + i s_Xs_Y)}{2}
-                \\end{pmatrix}^{2^\\tau}\\\\
-                &= T^{2^\\tau},
-            \\end{align*}
-
-        with
-
-        .. math::
-            \\begin{align*}
-                X &= 2^{-\\tau}x,\\\\
-                Y &= 2^{-\\tau}y,\\\\
-                Z &= 2^{-\\tau}z,\\\\
-                Q &= 2^{-\\tau}q,\\\\
-                c_{\\theta} &= \\cos(\\theta),\\\\
-                s_{\\theta} &= \\sin(\\theta).
+                \\exp(A) =& \\exp\\left(-i\\omega_x J_x - i\\omega_y J_y - i\\omega_z J_z - i\\omega_q Q\\right)\\\\
+            =& \\exp\\left(2^{-\\tau}\\left(-i\\omega_x J_x - i\\omega_y J_y - i\\omega_z J_z - i\\omega_q Q\\right)\\right)^{2^\\tau}\\\\
+            \\approx& \\biggl(\\exp\\left(-i\\frac12\\left(2^{-\\tau} \\omega_z J_z + 2^{-\\tau}\\omega_q Q\\right)\\right)\\nonumber\\\\
+            &\\cdot\\exp\\left(-i\\left(2^{-\\tau} \\omega_\\phi J_\\phi\\right)\\right)\\nonumber\\\\
+            &\\cdot\\exp\\left(-i\\frac12\\left(2^{-\\tau} \\omega_z J_z + 2^{-\\tau} \\omega_q Q\\right)\\right)\\biggr)^{2^\\tau}\\\\
+            =& \\begin{pmatrix}
+                \\left(\\cos\\left(\\frac{\\Phi}{2}\\right) e^{-iz}e^{-iq}\\right)^2 & \\frac{-i}{\\sqrt{2}} \\sin(\\Phi)e^{iq}e^{-iz}e^{-i\\phi} & -\\left(\\sin\\left(\\frac{\\Phi}{2}\\right)e^{iq}e^{-i\\phi}\\right)^2\\\\
+                \\frac{-i}{\\sqrt{2}} \\sin(\\Phi)e^{iq}e^{-iz}e^{i\\phi} & \\cos(\\Phi)e^{i4q} & \\frac{-i}{\\sqrt{2}} \\sin(\\Phi)e^{iq}e^{iz}e^{-i\\phi}\\\\
+                -\\left(\\sin\\left(\\frac{\\Phi}{2}\\right)e^{-iq}e^{i\\phi}\\right)^2 & \\frac{-i}{\\sqrt{2}} \\sin(\\Phi)e^{iq}e^{iz}e^{i\\phi} & \\left(\\cos\\left(\\frac{\\Phi}{2}\\right) e^{iz}e^{-iq}\\right)^2
+            \\end{pmatrix}^{2^\\tau}.\\\\
             \\end{align*}
         
+        Here :math:`z = 2^{-\\tau}\\frac{\\omega_z}{2}`, :math:`q = 2^{-\\tau}\\frac{\\omega_q}{6}`, :math:`\\Phi = 2^{-\\tau}\\sqrt{\\omega_x^2 + \\omega_y^2}`, and :math:`\\phi = \\mathrm{atan}2(\\omega_y, \\omega_x)`.
         Once :math:`T` is calculated, it is then recursively squared :math:`\\tau` times to obtain :math:`\\exp(A)`.
 
         Parameters:
         
         * **field_sample** (:class:`numpy.ndarray` of :class:`numpy.float64`, (y_index, x_index)) - The values of x, y and z (and q for spin one) respectively, as described above.
         * **result** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - The matrix which the result of the exponentiation is to be written to.
-        * **trotter_cutoff** (:obj:`int`) - The number of squares to make to the approximate matrix (:math:`\\tau` above).
+        * **number_of_squares** (:obj:`int`) - The number of squares to make to the approximate matrix (:math:`\\tau` above).
 
     matrix_exponential_lie_trotter_8(field_sample, result) : :obj:`callable`
         Calculates a matrix exponential based on the Lie Product Formula,
@@ -1405,13 +1386,102 @@ class Utilities:
         .. math::
             \\exp(A + B) = \\lim_{c \\to \\infty} \\left(\\exp\\left(\\frac{1}{c}A\\right) \\exp\\left(\\frac{1}{c}B\\right)\\right)^c.
 
+        Assumes the exponent is an imaginary linear combination elements of :math:`\\mathfrak{su}(3)`, being,
+
+        .. math::
+            \\begin{align*}
+                A &= -i(\\omega_x J_x + \\omega_y J_y + \\omega_z J_z + \\omega_q Q + \\omega_{u1} U_1 + \\omega_{u2} U_2 + \\omega_{v1} V_1 + \\omega_{v2} V_2),
+            \\end{align*}
+        
+        with
+
+        .. math::
+            \\begin{align*}
+                J_x &= \\frac{1}{\\sqrt{2}}\\begin{pmatrix}
+                    0 & 1 & 0 \\\\
+                    1 & 0 & 1 \\\\
+                    0 & 1 & 0
+                \\end{pmatrix},&
+                J_y &= \\frac{1}{\\sqrt{2}}\\begin{pmatrix}
+                    0 & -i &  0 \\\\
+                    i &  0 & -i \\\\
+                    0 &  i &  0
+                \\end{pmatrix},\\\\
+                J_z &= \\begin{pmatrix}
+                    1 & 0 &  0 \\\\
+                    0 & 0 &  0 \\\\
+                    0 & 0 & -1
+                \\end{pmatrix},&
+                Q &= \\frac{1}{3}\\begin{pmatrix}
+                    1 &  0 & 0 \\\\
+                    0 & -2 & 0 \\\\
+                    0 &  0 & 1
+                \\end{pmatrix}\\\\
+                U_1 &= \\begin{pmatrix}
+                    0 & 0 & 1 \\\\
+                    0 & 0 & 0 \\\\
+                    1 & 0 & 0
+                \\end{pmatrix},&
+                U_2 &= \\begin{pmatrix}
+                    0 & 0 & -i \\\\
+                    0 & 0 &  0 \\\\
+                    i & 0 &  0
+                \\end{pmatrix},\\\\
+                V_1 &= \\frac{1}{\\sqrt{2}}\\begin{pmatrix}
+                    0 &  1 &  0 \\\\
+                    1 &  0 & -1 \\\\
+                    0 & -1 &  0
+                \\end{pmatrix},&
+                V_2 &= \\frac{1}{\\sqrt{2}}\\begin{pmatrix}
+                    0 & -i & 0 \\\\
+                    i &  0 & i \\\\
+                    0 & -i & 0
+                \\end{pmatrix},\\\\
+            \\end{align*}
+
+        Then the exponential can be approximated as, for large :math:`\\tau`,
+
+        .. math::
+            \\begin{align*}
+            \\exp(A) =& \\exp\\biggl(-i\\omega_x J_x - i\\omega_y J_y - i\\omega_z J_z - i\\omega_q Q\\\\
+            &- i\\omega_{u1} U_1 - i\\omega_{u2} U_2 - i\\omega_{v1} V_1 - i\\omega_{v2} V_2\\biggr)\\\\
+            & \\exp\\biggl(2^{-\\tau}\\biggl(-i\\omega_x J_x - i\\omega_y J_y - i\\omega_z J_z - i\\omega_q Q\\\\
+            &- i\\omega_{u1} U_1 - i\\omega_{u2} U_2 - i\\omega_{v1} V_1 - i\\omega_{v2} V_2\\biggr)\\biggr)^{2^\\tau}\\\\
+            \\approx& \\biggl(\\exp\\left(-i2^{-\\tau} \\omega_\\phi J_\\phi\\right)\\exp\\left(-i2^{-\\tau} \\omega_{u\\phi} U_{u\\phi}\\right)\\\\
+            &\\cdot\\exp\\left(-i2^{-\\tau} \\omega_{v\\phi} V_{v\\phi}\\right)\\exp\\left(-i2^{-\\tau} \\omega_z J_z -i2^{-\\tau} \\omega_q Q \\right)\\biggr)^{2^\\tau}\\\\
+            =& \\biggl(\\begin{pmatrix}
+                \\cos^2\\left(\\frac{\\Phi}{2}\\right) & \\frac{-i}{\\sqrt{2}} \\sin(\\Phi)e^{-i\\phi} & -\\left(\\sin\\left(\\frac{\\Phi}{2}\\right)e^{-i\\phi}\\right)^2\\\\
+                \\frac{-i}{\\sqrt{2}} \\sin(\\Phi)e^{i\\phi} & \\cos\\left(\\Phi\\right) & \\frac{-i}{\\sqrt{2}} \\sin(\\Phi)e^{-i\\phi}\\\\
+                -\\left(\\sin\\left(\\frac{\\Phi}{2}\\right)e^{i\\phi}\\right)^2 & \\frac{-i}{\\sqrt{2}} \\sin(\\Phi)e^{i\\phi} & \\cos^2\\left(\\frac{\\Phi}{2}\\right)
+            \\end{pmatrix}\\\\
+            &\\cdot \\begin{pmatrix}
+                \\cos\\left(\\Phi_u\\right) & 0 & -i \\sin\\left(\\Phi_u\\right)e^{-i\\phi_u}\\\\
+                0 & 1 & 0\\\\
+                -i \\sin\\left(\\Phi_u\\right)e^{i\\phi_u} & 0 & \\cos\\left(\\Phi_u\\right)
+            \\end{pmatrix}\\\\
+            &\\cdot \\begin{pmatrix}
+                \\cos^2\\left(\\frac{\\Phi_v}{2}\\right) & \\frac{-i}{\\sqrt{2}} \\sin(\\Phi_v)e^{-i\\phi_v} & \\left(\\sin\\left(\\frac{\\Phi_v}{2}\\right)e^{-i\\phi_v}\\right)^2\\\\
+                \\frac{-i}{\\sqrt{2}} \\sin(\\Phi_v)e^{i\\phi_v} & \\cos\\left(\\Phi_v\\right) & \\frac{i}{\\sqrt{2}} \\sin(\\Phi_v)e^{-i\\phi_v}\\\\
+                \\left(\\sin\\left(\\frac{\\Phi_v}{2}\\right)e^{i\\phi_v}\\right)^2 & \\frac{i}{\\sqrt{2}} \\sin(\\Phi_v)e^{i\\phi_v} & \\cos^2\\left(\\frac{\\Phi_v}{2}\\right)
+            \\end{pmatrix}\\\\
+            &\\cdot \\begin{pmatrix}
+                e^{-iz - iq} & 0 & 0\\\\
+                0 & e^{i2q} & 0\\\\
+                0 & 0 & e^{iz - iq}
+            \\end{pmatrix}\\biggr)^{2^\\tau}\\\\
+            =& T^{2^\\tau}.
+            \\end{align*}
+
+        Here :math:`z = 2^{-\\tau}\\frac{\\omega_z}{2}`, :math:`q = 2^{-\\tau}\\frac{\\omega_q}{6}`, :math:`\\Phi = 2^{-\\tau}\\sqrt{\\omega_x^2 + \\omega_y^2}`, :math:`\\phi = \\mathrm{atan}2(\\omega_y, \\omega_x)`, :math:`\\Phi_u = 2^{-\\tau}\\sqrt{\\omega_{u1}^2 + \\omega_{u2}^2}`, :math:`\\phi_u = \\mathrm{atan}2(\\omega_{u1}, \\omega_{u2})`, :math:`\\Phi_v = 2^{-\\tau}\\sqrt{\\omega_{v1}^2 + \\omega_{v2}^2}`, and :math:`\\phi_v = \\mathrm{atan}2(\\omega_{v1}, \\omega_{v2})`.
+        Once :math:`T` is calculated, it is then recursively squared :math:`\\tau` times to obtain :math:`\\exp(A)`.
+
         Parameters:
 
         * **field_sample** (:class:`numpy.ndarray` of :class:`numpy.float64`, (y_index, x_index)) - The values of x, y, z, q, u1, u2, v1 and v2 respectively, as described above.
         * **result** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - The matrix which the result of the exponentiation is to be written to.
-        * **trotter_cutoff** (:obj:`int`) - The number of squares to make to the approximate matrix (:math:`\\tau` above).
+        * **number_of_squares** (:obj:`int`) - The number of squares to make to the approximate matrix (:math:`\\tau` above).
     """
-    def __init__(self, spin_quantum_number, device, threads_per_block):
+    def __init__(self, spin_quantum_number, device, threads_per_block, number_of_squares):
         """
         Parameters
         ----------
@@ -1424,6 +1494,11 @@ class Utilities:
         """
         jit_device = device.jit_device
         device_index = device.index
+
+        number_of_hypercubes = math.ceil(number_of_squares/2)
+        if number_of_hypercubes < 0:
+            number_of_hypercubes = 0
+        trotter_precision = 4**number_of_hypercubes
 
         @jit_device
         def conj(z):
@@ -1533,38 +1608,38 @@ class Utilities:
                     c = cos_exp_m1(r/2, 0)
                     s = math.sin(r/2)
 
-                    result[0, 0] = c - 1j*z*s
+                    result[0, 0] = c - 1j*z*s + 1
                     result[1, 0] = (y - 1j*x)*s
                     result[0, 1] = -(y + 1j*x)*s
-                    result[1, 1] = c + 1j*z*s
+                    result[1, 1] = c + 1j*z*s + 1
                 else:
-                    result[0, 0] = 0
+                    result[0, 0] = 1
                     result[1, 0] = 0
                     result[0, 1] = 0
-                    result[1, 1] = 0
+                    result[1, 1] = 1
 
             @jit_device
-            def matrix_exponential_lie_trotter(field_sample, result, trotter_cutoff):
-                hyper_cube_amount = math.ceil(trotter_cutoff/2)
-                if hyper_cube_amount < 0:
-                    hyper_cube_amount = 0
-                precision = 4**hyper_cube_amount
+            def matrix_exponential_lie_trotter(field_sample, result):
+                # number_of_hypercubes = math.ceil(number_of_squares/2)
+                # if number_of_hypercubes < 0:
+                #     number_of_hypercubes = 0
+                # trotter_precision = 4**number_of_hypercubes
                 
                 a = math.sqrt(field_sample[0]*field_sample[0] + field_sample[1]*field_sample[1])
                 if a > 0:
                     ep = (field_sample[0] + 1j*field_sample[1])/a
                 else:
                     ep = 1
-                a = a/precision
+                a = a/trotter_precision
 
-                Ca = math.cos(a/2)
+                # Ca = math.cos(a/2)
 
                 Sa = -1j*math.sin(a/2)
 
-                z = field_sample[2]/(2*precision)
+                z = field_sample[2]/(2*trotter_precision)
                 # ez = math.cos(ez) + 1j*math.sin(ez)
 
-                # eq = field_sample[3]/(6*precision)
+                # eq = field_sample[3]/(6*trotter_precision)
                 # eq = math.cos(eq) + 1j*math.sin(eq)
 
                 result[0, 0] = cos_exp_m1(a/2, -z)
@@ -1580,27 +1655,27 @@ class Utilities:
                 elif device_index == 2:
                     temporary_group = roc.shared.array((threads_per_block, 2, 2), dtype = np.complex128)
                     temporary = temporary_group[roc.get_local_id(1), :, :]
-                for power_index in range(hyper_cube_amount):
+                for power_index in range(number_of_hypercubes):
                     matrix_square_m1(result, temporary)
                     matrix_square_m1(temporary, result)
                     # matrix_multiply(result, result, temporary)
                     # matrix_multiply(temporary, temporary, result)
-                # result[0, 0] += 1
-                # result[1, 1] += 1
+                result[0, 0] += 1
+                result[1, 1] += 1
 
-            def matrix_exponential_lie_trotter_8(field_sample, result, trotter_cutoff):
+            def matrix_exponential_lie_trotter_8(field_sample, result):
                 pass
 
             # @jit_device
-            # def matrix_exponential_lie_trotter(field_sample, result, trotter_cutoff):
-            #     hyper_cube_amount = math.ceil(trotter_cutoff/2)
-            #     if hyper_cube_amount < 0:
-            #         hyper_cube_amount = 0
-            #     precision = 4**hyper_cube_amount
+            # def matrix_exponential_lie_trotter(field_sample, result, number_of_squares):
+            #     number_of_hypercubes = math.ceil(number_of_squares/2)
+            #     if number_of_hypercubes < 0:
+            #         number_of_hypercubes = 0
+            #     trotter_precision = 4**number_of_hypercubes
                 
-            #     x = field_sample[0]/(2*precision)
-            #     y = field_sample[1]/(2*precision)
-            #     z = field_sample[2]/(2*precision)
+            #     x = field_sample[0]/(2*trotter_precision)
+            #     y = field_sample[1]/(2*trotter_precision)
+            #     z = field_sample[2]/(2*trotter_precision)
 
             #     cx = math.cos(x)
             #     sx = math.sin(x)
@@ -1622,7 +1697,7 @@ class Utilities:
             #     elif device_index == 2:
             #         temporary_group = roc.shared.array((threads_per_block, 2, 2), dtype = np.complex128)
             #         temporary = temporary_group[roc.get_local_id(1), :, :]
-            #     for power_index in range(hyper_cube_amount):
+            #     for power_index in range(number_of_hypercubes):
             #         matrix_multiply(result, result, temporary)
             #         matrix_multiply(temporary, temporary, result)
 
@@ -1751,22 +1826,22 @@ class Utilities:
                 result[2, 2] = conj(operator[2, 2])
 
             @jit_device
-            def matrix_exponential_analytic(field_sample, result, trotter_cutoff):
+            def matrix_exponential_analytic(field_sample, result, number_of_squares):
                 pass
 
             @jit_device
-            def matrix_exponential_lie_trotter(field_sample, result, trotter_cutoff):
-                hyper_cube_amount = math.ceil(trotter_cutoff/2)
-                if hyper_cube_amount < 0:
-                    hyper_cube_amount = 0
-                precision = 4**hyper_cube_amount
+            def matrix_exponential_lie_trotter(field_sample, result):
+                # number_of_hypercubes = math.ceil(number_of_squares/2)
+                # if number_of_hypercubes < 0:
+                #     number_of_hypercubes = 0
+                # trotter_precision = 4**number_of_hypercubes
 
                 # a = math.sqrt(field_sample[0]*field_sample[0] + field_sample[1]*field_sample[1])
                 # if a > 0:
                 #     ep = (field_sample[0] + 1j*field_sample[1])/a
                 # else:
                 #     ep = 1
-                # a = a/precision
+                # a = a/trotter_precision
 
                 # Ca = math.cos(a/2)
 
@@ -1776,10 +1851,10 @@ class Utilities:
 
                 # sa = -1j*math.sin(a)/sqrt2
 
-                # ez = field_sample[2]/(2*precision)
+                # ez = field_sample[2]/(2*trotter_precision)
                 # ez = math.cos(ez) + 1j*math.sin(ez)
 
-                # eq = field_sample[3]/(6*precision)
+                # eq = field_sample[3]/(6*trotter_precision)
                 # eq = math.cos(eq) + 1j*math.sin(eq)
 
                 # result[0, 0] = (Ca/(eq*ez))*(Ca/(eq*ez)) - 1
@@ -1802,10 +1877,10 @@ class Utilities:
 
                 # sa = -1j*a/sqrt2
 
-                # ez = field_sample[2]/(2*precision)
+                # ez = field_sample[2]/(2*trotter_precision)
                 # ez = 1 + 1j*ez
 
-                # eq = field_sample[3]/(6*precision)
+                # eq = field_sample[3]/(6*trotter_precision)
                 # eq = 1 + 1j*eq
 
                 a = math.sqrt(field_sample[0]*field_sample[0] + field_sample[1]*field_sample[1])
@@ -1813,11 +1888,11 @@ class Utilities:
                     p = math.atan2(field_sample[1], field_sample[0])
                 else:
                     p = 0
-                a = a/precision
+                a = a/trotter_precision
                 Sa = math.sin(a/2)
                 sa = -1j*math.sin(a)/sqrt2
-                z = field_sample[2]/(2*precision)
-                q = field_sample[3]/(6*precision)                
+                z = field_sample[2]/(2*trotter_precision)
+                q = field_sample[3]/(6*trotter_precision)                
 
                 save_cos_exp_m1 = cos_exp_m1(a/2, -z - q)
                 result[0, 0] = save_cos_exp_m1*(save_cos_exp_m1 + 2)
@@ -1840,16 +1915,16 @@ class Utilities:
                 elif device_index == 2:
                     temporary_group = roc.shared.array((threads_per_block, 3, 3), dtype = np.complex128)
                     temporary = temporary_group[roc.get_local_id(1), :, :]
-                for power_index in range(hyper_cube_amount):
+                for power_index in range(number_of_hypercubes):
                     matrix_square_m1(result, temporary)
                     matrix_square_m1(temporary, result)
                 
-                # result[0, 0] += 1
-                # result[1, 1] += 1
-                # result[2, 2] += 1
+                result[0, 0] += 1
+                result[1, 1] += 1
+                result[2, 2] += 1
 
             @jit_device
-            def matrix_exponential_lie_trotter_8(field_sample, result, trotter_cutoff):
+            def matrix_exponential_lie_trotter_8(field_sample, result):
                 if device_index == 0:
                     temporary_1 = np.empty((3, 3), dtype = np.complex128)
                     temporary_2 = np.empty((3, 3), dtype = np.complex128)
@@ -1862,15 +1937,15 @@ class Utilities:
                     temporary_1 = temporary_group_1[roc.get_local_id(1), :, :]
                     temporary_2 = temporary_group_2[roc.get_local_id(1), :, :]
 
-                hyper_cube_amount = math.ceil(trotter_cutoff/2)
-                if hyper_cube_amount < 0:
-                    hyper_cube_amount = 0
-                precision = 4**hyper_cube_amount
+                # number_of_hypercubes = math.ceil(number_of_squares/2)
+                # if number_of_hypercubes < 0:
+                #     number_of_hypercubes = 0
+                # trotter_precision = 4**number_of_hypercubes
 
                 a = math.sqrt(field_sample[0]*field_sample[0] + field_sample[1]*field_sample[1])
                 if a > 0:
                     ep = (field_sample[0] + 1j*field_sample[1])/a
-                    a = a/precision
+                    a = a/trotter_precision
                     Sa = math.sin(a/2)
                     sa = -1j*math.sin(a)/sqrt2             
                     Cam1 = cos_m1(a/2)
@@ -1895,7 +1970,7 @@ class Utilities:
                 a = math.sqrt(field_sample[6]*field_sample[6] + field_sample[7]*field_sample[7])
                 if a > 0:
                     ep = (field_sample[6] + 1j*field_sample[7])/a
-                    a = a/precision
+                    a = a/trotter_precision
                     Sa = math.sin(a/2)
                     sa = -1j*math.sin(a)/sqrt2             
                     Cam1 = cos_m1(a/2)
@@ -1922,7 +1997,7 @@ class Utilities:
                 a = math.sqrt(field_sample[4]*field_sample[4] + field_sample[5]*field_sample[5])
                 if a > 0:
                     ep = (field_sample[4] + 1j*field_sample[5])/a
-                    a = a/precision
+                    a = a/trotter_precision
                     Sa = math.sin(a)        
                     Cam1 = cos_m1(a)
                 else:
@@ -1946,8 +2021,8 @@ class Utilities:
 
                 matrix_multiply_m1(result, temporary_2, temporary_1)
 
-                a = field_sample[2]/precision
-                ep = field_sample[3]/(3*precision)
+                a = field_sample[2]/trotter_precision
+                ep = field_sample[3]/(3*trotter_precision)
 
                 temporary_2[0, 0] = expm1i(-a - ep)
                 temporary_2[1, 0] = 0.0
@@ -1963,21 +2038,25 @@ class Utilities:
 
                 matrix_multiply_m1(temporary_1, temporary_2, result)
 
-                for power_index in range(hyper_cube_amount):
+                for power_index in range(number_of_hypercubes):
                     matrix_square_m1(result, temporary_1)
                     matrix_square_m1(temporary_1, result)
+
+                result[0, 0] += 1
+                result[1, 1] += 1
+                result[2, 2] += 1
             
             # @jit_device
-            # def matrix_exponential_lie_trotter(field_sample, result, trotter_cutoff):
-            #     hyper_cube_amount = math.ceil(trotter_cutoff/2)
-            #     if hyper_cube_amount < 0:
-            #         hyper_cube_amount = 0
-            #     precision = 4**hyper_cube_amount
+            # def matrix_exponential_lie_trotter(field_sample, result, number_of_squares):
+            #     number_of_hypercubes = math.ceil(number_of_squares/2)
+            #     if number_of_hypercubes < 0:
+            #         number_of_hypercubes = 0
+            #     trotter_precision = 4**number_of_hypercubes
                 
-            #     x = field_sample[0]/precision
-            #     y = field_sample[1]/precision
-            #     z = field_sample[2]/precision
-            #     q = field_sample[3]/precision
+            #     x = field_sample[0]/trotter_precision
+            #     y = field_sample[1]/trotter_precision
+            #     z = field_sample[2]/trotter_precision
+            #     q = field_sample[3]/trotter_precision
 
             #     cx = math.cos(x)
             #     sx = math.sin(x)
@@ -2006,7 +2085,7 @@ class Utilities:
             #     elif device_index == 2:
             #         temporary_group = roc.shared.array((threads_per_block, 3, 3), dtype = np.complex128)
             #         temporary = temporary_group[roc.get_local_id(1), :, :]
-            #     for power_index in range(hyper_cube_amount):
+            #     for power_index in range(number_of_hypercubes):
             #         matrix_multiply(result, result, temporary)
             #         matrix_multiply(temporary, temporary, result)
 

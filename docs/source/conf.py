@@ -18,6 +18,7 @@ sphinx-apidoc -o source/ ../
 
 To build html from rst:
 make html
+(must run from cmd, not powershell)
 """
 
 import os
@@ -39,7 +40,7 @@ copyright = '2020, Monash University'
 author = 'Alexander Tritt'
 
 # The full version, including alpha/beta/rc tags
-release = '0.4.0'
+release = '0.4.1'
 
 
 # -- General configuration ---------------------------------------------------
