@@ -388,40 +388,43 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		% \end{align}
 
 		Consequently matrix exponentiation ... raising T to appropriately large n.
-		Choice of n. n is large number, integer, power of 2. Efficiently by recursive squaring.
+		Choice of n. n is large number, integer, power of 2. Efficiently by iterated squaring. Reference. % Revisit!!!
 		Here \(z = 2^{-\tau}\frac{\omega_z}{2}\), \(q = 2^{-\tau}\frac{\omega_q}{6}\), \(\phi = 2^{-\tau}\sqrt{\omega_x^2 + \omega_y^2}\), and \(\phi = \mathrm{atan}2(\omega_y, \omega_x)\).
 		Once \(T\) is calculated, it is then recursively squared \(\tau\) times to obtain \(E(\omega)\).
-		In practice the calculations here are done by finding the differences from the matrices from the identity to avoid floating point cancellation errors from subtracting a small number from 1.
+		In practice the calculations here are done by finding the differences of the matrices from the identity to avoid floating point cancellation errors from subtracting a small number from 1.
+		% Three sentences rather than one
+		% Errors:
+		%	Trotter
+		% 	Evaluating T
+		% 	Iterated squaring
 
-		The approach used for spin one exponentiation means that this particular exponentiator cannot solve arbitrary spin one quantum systems, as that would require the ability to exponentiate a point in the full, 8-dimensional Lie algebra of \(\mathfrak{su}(3)\), rather than just the 4-dimensional subspace spanned by the subalgebra \(\mathfrak{su}(2)\) spanned by \(\{J_x, J_y, J_z\}\), and the single quadratic operator \(Q\).
-		An exponentiator which can exponentiate an element of the full algebra is included in the package for completeness, though this was not rigorously tested as our lab does not deal with physical systems that would require this functionality to work.
+		% This spin-one exponentiator cannot solve arbitrary spin-one quantum systems, as that would require the ability to exponentiate a point in the full, 8-dimensional Lie algebra of \(\mathfrak{su}(3)\), rather than just the 4-dimensional subspace spanned by the subalgebra \(\mathfrak{su}(2)\) spanned by \(\{J_x, J_y, J_z, Q\}\), and the single quadratic operator \(Q\).
+		This spin-one exponentiator evolves Hamiltonians spanned by \(J_x, J_y, J_z\) and \(Q\) which is sufficient for three level systems in arbitrary bias fields, but with single-photon coupling.
+		An exponentiator capable of evolving an arbitrary spin-one Hamiltonian, for example with different coupling between the lower and upper pairs of states, or with two-photon coupling, is included in the package.
+		When assessing accuracy for spin-one problems, we have used the single-photon exponentiator.
+		% though this was not rigorously tested as our lab does not deal with physical systems that would require this functionality to work.
 
-		Note that, the methods for both spin half and spin one use analytic forms of exponentials to construct the result, meaning that all calculated time evolution operators are unitary.
-		This guarantees that the results of \emph{spinsim} maintain unitary and conserve probability as required.
+		Note that, the methods for both spin-half and spin-one use analytic forms of matrix exponentials so that \(T\) is unitary by construction; \(\mathcal{U}=T^n\) is then also unitary.
+		Simulations in \emph{spinsim} thus maintain unitarity and so conserve probability even over very large numbers of time steps.
 
 	\subsection{Discretisation and parallelisation}
-		Consider quantising time with
+		Frequently we wish to sample the state at times \(t_k\) spaced more coarsely than the integration time step.
+		Consider discrete times \(t_k = t_0 + \mathrm{D}t\cdot k\) where \(\mathrm{D}t\) is the time step of the time-series, in contrast to \(\mathrm{d}t\), the time step of the integration.
+		% The unitary operator \(\mathcal{U}_k\) 
+		Denoting \(\psi_k = \psi(t_k)\) and \(\mathcal{U}_k = \mathcal{U}(t_{k}, t_{k-1})\), the time-series of states \( \psi_k\) and time-evolution operators \(\mathcal{U}_k\) satisfy
 		\begin{align}
-			t_k &= t_0 + \mathrm{D}t\cdot k,
+			\psi_k &= \mathcal{U}_k\psi_{k-1}.\label{eq:integration_compilation}
 		\end{align}
-		where \(\mathrm{D}t\) is the time step of the time series (in contrast to \(\mathrm{d}t\), a smaller time step for integration).
-		If we define
-		\begin{align}
-			\psi_k = \psi(t_k)\textrm{ and}\\
-			\mathcal{U}_k = \mathcal{U}(t_{k}, t_{k-1}),
-		\end{align}
-		then the time series of states \(\psi_k\) and time evolution operators \(\mathcal{U}_k\) satisfies
-		\begin{align}
-			\psi_k &= \mathcal{U}_k\psi_{k-1}\label{eq:integration_compilation}
-		\end{align}
-
 		This presents an opportunity for parallelism.
-		While each of the \(\psi_k\) must be evaluated sequentially, the value of the \(\mathcal{U}_k\) is independent of the value of any \(\psi_{k_0}\), or any other \(\mathcal{U}_{k_0}\).
-		This means that the time evolution operators \(\mathcal{U}_k\) can all be calculated in parallel, and it allows \emph{spinsim} to use GPU parallelisation on the level of time sample points, so a speed up is achieved even if just a single simulation is run.
+		While \(\psi_k\) depends on \(\psi_{k-1}\), the operators \(\mathcal{U}_k\) depend only on the field functions, and not on previous states \(\psi_{k'}\) or previous operators \(\mathcal{U}_{k'}\).
+		Hence, the time-evolution operators \(\mathcal{U}_k\) can be calculated in parallel.
+		% It allows \emph{spinsim} to use GPU parallelisation on the level of time sample points, so a speed up is achieved even if just a single simulation is run.
 
-		In summary, \emph{spinsim} splits the time evolution of the full simulation into time evolution \(\mathcal{U}_k\) within small time intervals \([t_{k - 1}, t_{k}]\), which are each calculated massively in parallel on a GPU.
+		\emph{spinsim} splits the full simulation into small time intervals \([t_{k - 1}, t_{k}]\), and calculates time-evolution operators \(\mathcal{U}_k\) massively in parallel on a GPU.
+		% within small time intervals \([t_{k - 1}, t_{k}]\), which are each calculated massively in parallel on a GPU.
 		When all the \(\mathcal{U}_k\) are calculated, the CPU then multiplies the \(\mathcal{U}_k\) together (a comparatively less demanding job than calculating them) using Equation \eqref{eq:integration_compilation} to determine the \(\psi_k\).
 
+		Within each parallel discretisation, we ...
 		Beyond discretisation for parallelisation, we discretise our time evolution operator into individual integration time steps.
 		So, each of the \(\mathcal{U}_k\) are split into products of time evolution operators between times separated by the integration time step via
 		\begin{align}
