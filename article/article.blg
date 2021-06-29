@@ -1,5 +1,13 @@
-This is BibTeX, Version 0.99dThe top-level auxiliary file: article.aux
+This is BibTeX, Version 0.99d
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: article.aux
+Reallocating 'name_of_file' (item size: 1) to 8 items.
+Reallocating 'name_of_file' (item size: 1) to 10 items.
 The style file: vancouver.bst
+Reallocating 'glb_str_end' (item size: 4) to 20 items.
+Reallocating 'glb_str_ptr' (item size: 4) to 20 items.
+Reallocating 'global_strs' (item size: 1) to 4000000 items.
+Reallocating 'wiz_functions' (item size: 4) to 6000 items.
 Database file #1: spinsim.bib
 Warning--empty author and editor in alexander-tritt-monash_alexander-tritt-monashneural-sense_2020
 Warning--missing publisher in alexander-tritt-monash_alexander-tritt-monashneural-sense_2020
@@ -10,4 +18,45 @@ Warning--missing publisher in noauthor_cuda_2012
 Warning--empty author in noauthor_cuda_2013
 Warning--empty author and editor in noauthor_cuda_2013
 Warning--missing publisher in noauthor_cuda_2013
+You've used 28 entries,
+            3177 wiz_defined-function locations,
+            865 strings with 11949 characters,
+and the built_in function-call counts, 44738 in all, are:
+= -- 5682
+> -- 272
+< -- 7
++ -- 188
+- -- 67
+* -- 3655
+:= -- 4827
+add.period$ -- 132
+call.type$ -- 28
+change.case$ -- 19
+chr.to.int$ -- 6
+cite$ -- 37
+duplicate$ -- 3774
+empty$ -- 4342
+format.name$ -- 86
+if$ -- 10598
+int.to.chr$ -- 0
+int.to.str$ -- 28
+missing$ -- 278
+newline$ -- 168
+num.names$ -- 30
+pop$ -- 524
+preamble$ -- 1
+purify$ -- 0
+quote$ -- 0
+skip$ -- 509
+stack$ -- 0
+substring$ -- 8200
+swap$ -- 640
+text.length$ -- 5
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 0
+warning$ -- 9
+while$ -- 234
+width$ -- 30
+write$ -- 362
 (There were 9 warnings)

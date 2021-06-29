@@ -87,6 +87,14 @@ Auer N, Einkemmer L, Kandolf P, Ostermann A.
 \newblock Available from:
   \url{http://www.sciencedirect.com/science/article/pii/S0010465518300584}.
 
+\bibitem{blanes_fourth-_2006}
+Blanes S, Moan PC.
+\newblock Fourth- and sixth-order commutator-free {Magnus} integrators for
+  linear and non-linear dynamical systems.
+\newblock Applied Numerical Mathematics. 2006 Dec;56(12):1519--1537.
+\newblock Available from:
+  \url{https://www.sciencedirect.com/science/article/pii/S0168927405002163}.
+
 \bibitem{moler_nineteen_2003}
 Moler C, Van~Loan C.
 \newblock Nineteen {Dubious} {Ways} to {Compute} the {Exponential} of a
@@ -94,6 +102,22 @@ Moler C, Van~Loan C.
 \newblock SIAM Review. 2003;45(1):3--49.
 \newblock Publisher: Society for Industrial and Applied Mathematics.
 \newblock Available from: \url{https://www.jstor.org/stable/25054364}.
+
+\bibitem{barthel_optimized_2020}
+Barthel T, Zhang Y.
+\newblock Optimized {Lie}–{Trotter}–{Suzuki} decompositions for two and
+  three non-commuting terms.
+\newblock Annals of Physics. 2020 Jul;418:168165.
+\newblock Available from:
+  \url{https://www.sciencedirect.com/science/article/pii/S0003491620300981}.
+
+\bibitem{suzuki_generalized_1976}
+Suzuki M.
+\newblock Generalized {Trotter}'s formula and systematic approximants of
+  exponential operators and inner derivations with applications to many-body
+  problems.
+\newblock Communications in Mathematical Physics. 1976 Jun;51(2):183--190.
+\newblock Available from: \url{http://link.springer.com/10.1007/BF01609348}.
 
 \bibitem{j_j_sakurai_jun_john_modern_1994}
 {J J Sakurai (Jun John)}.
