@@ -354,7 +354,7 @@ class Simulator:
         
         * **spin** (:obj:`numpy.ndarray` of :obj:`numpy.float64` (time_index, spatial_direction)) - The expected spin projection (Bloch vector) over time.
     """
-    def __init__(self, get_field:callable, spin_quantum_number:SpinQuantumNumber, device:Device = None, exponentiation_method:ExponentiationMethod = None, use_rotating_frame:bool = True, integration_method:IntegrationMethod = IntegrationMethod.MAGNUS_CF4, number_of_squares:int = 28, threads_per_block:int = 64, max_registers:int = None):
+    def __init__(self, get_field:callable, spin_quantum_number:SpinQuantumNumber, device:Device = None, exponentiation_method:ExponentiationMethod = None, use_rotating_frame:bool = True, integration_method:IntegrationMethod = IntegrationMethod.MAGNUS_CF4, number_of_squares:int = 24, threads_per_block:int = 64, max_registers:int = None):
         """
         .. _Achieved Occupancy: https://docs.nvidia.com/gameworks/content/developertools/desktop/analysis/report/cudaexperiments/kernellevel/achievedoccupancy.htm
 
@@ -414,7 +414,7 @@ class Simulator:
             print("\033[31mspinsim error!!!\nnumba could not jit get_field function into a device function.\033[0m\n")
             raise
 
-    def compile_time_evolver(self, get_field:callable, spin_quantum_number:SpinQuantumNumber, device:Device, use_rotating_frame:bool = True, integration_method:IntegrationMethod = IntegrationMethod.MAGNUS_CF4, exponentiation_method:ExponentiationMethod = None, number_of_squares:int = 28, threads_per_block:int = 64, max_registers:int = None):
+    def compile_time_evolver(self, get_field:callable, spin_quantum_number:SpinQuantumNumber, device:Device, use_rotating_frame:bool = True, integration_method:IntegrationMethod = IntegrationMethod.MAGNUS_CF4, exponentiation_method:ExponentiationMethod = None, number_of_squares:int = 24, threads_per_block:int = 64, max_registers:int = None):
         """
         Compiles the integrator and spin calculation functions of the simulator.
 
