@@ -213,7 +213,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		% Too far out of scope
 		% Alternative: integrate Bloch equations 3 coupled real equations
 		% fast and parallel function from wavefunctions
-		As well as integrating the Schr\"odinger equation, \emph{spinsim} also has the functionality to calculate the expected spin projection $ \left\langle \overrightarrow{J}\right\rangle $(t) of a system from its state.
+		As well as integrating the Schr\"odinger equation, \emph{spinsim} also has the functionality to calculate the expected spin projection $ \left\langle \overrightarrow{J}\right\rangle (t) $ of a system from its state.
 		In an experimental setting, one cannot measure the value of the state itself, and must instead measure observables such as spin projection.
 		If this is done for an ensemble of systems, the average spin projection over all systems will converge to the expected value as calculated here.
 		
@@ -335,14 +335,14 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		\begin{align}
 			T &= \exp\left(-i\frac12D_{z,q}\right)\exp(-i\Phi J_\phi)\exp\left(-i\frac12D_{z,q}\right).
 		\end{align}
-		Here $ z = \omega_z/n $, $q = \omega_q/n $, $ \Phi = \sqrt{\omega_x^2 + \omega_y^2}/n $, $ \phi = \mathrm{atan}2(\omega_y, \omega_x) $, $ D_{z,q} = zJ_z + qQ $ and $ J_\phi = \cos(\phi) J_x + \sin(\phi) J_y $.
+		Here $ z = \omega_z/n $, $q = \omega_q/n $, $ \Phi = \sqrt{\omega_x^2 + \omega_y^2}/n $, $ \phi = \mathrm{arctan}2(\omega_y, \omega_x) $ (where $ \mathrm{arctan}2(y, x) $ is the two argument arctangent\cite{organick_fortran_1966}), $ D_{z,q} = zJ_z + qQ $ and $ J_\phi = \cos(\phi) J_x + \sin(\phi) J_y $.
 		The element-wise analytic form of this is
 		\begin{align}
 			T &= \begin{pmatrix}
 				\left(\cos\left(\frac{\Phi}{2}\right) e^{-iz/2}e^{-iq/6}\right)^2 & \frac{-i}{\sqrt{2}} \sin(\Phi)e^{iq/6}e^{-iz/2}e^{-i\phi} & -\left(\sin\left(\frac{\Phi}{2}\right)e^{iq/6}e^{-i\phi}\right)^2\\
 				\frac{-i}{\sqrt{2}} \sin(\Phi)e^{iq/6}e^{-iz/2}e^{i\phi} & \cos(\Phi)e^{i4q} & \frac{-i}{\sqrt{2}} \sin(\Phi)e^{iq/6}e^{iz/2}e^{-i\phi}\\
 				-\left(\sin\left(\frac{\Phi}{2}\right)e^{-iq/6}e^{i\phi}\right)^2 & \frac{-i}{\sqrt{2}} \sin(\Phi)e^{iq/6}e^{iz/2}e^{i\phi} & \left(\cos\left(\frac{\Phi}{2}\right) e^{iz/2}e^{-iq/6}\right)^2
-			\end{pmatrix}.
+			\end{pmatrix}.\label{eq:lie_trotter_4}
 		\end{align}
 		% The equality holds for the limit for all $ n $ if the operators commute, like it does for real and complex numbers.
 		% This tells us that we can approximate a matrix exponential of a linear combination of Hermitian operators by scaling down these operators, taking the analytically simple exponentials of each of the operators $ -iJ_x, -iJ_y, -iJ_z $ and $ -iQ $ separately, multiplying each individual result together, and then raising the combination $ T $ to the power of the original reduction.
@@ -413,6 +413,16 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		Instead, we tested the formula on $ 10^5 $ matrices for different values of $ \tau $, and compared them to results given by \texttt{scipy.linalg.expm()}, from the popular python library \emph{SciPy}.
 		We found that the error minimised after a number of squares of $ \tau = 24 $.
 		Thus, by default, $ n = 2^{24} $.
+
+		In addition to those introduced by the Lie-Trotter approximation, we find errors when manipulating matrices close to the identity.
+		This is a consequence of the diagonals of the matrices being close to 1, with the limited precision of floating point numbers being unable to represent these differences accurately.
+		Errors appear in two forms.
+		One is that iterative squaring of matrices close to the identity produces floating point cancellation errors.
+		This can be fixed by only working with the difference of the matrices from the identity when squaring.
+		That is, if $ A = I + a $, then instead of calculating the square $ S = I + s = A^2 $, we find $ s = (a + 2I)a $.
+		The other is that if we use this method, we must calculate $ T - I $ accurately, rather than $ T $, which cannot be done by simply subtracting the identity from Equation \eqref{eq:lie_trotter_4}.
+		This can be fixed by replacing the exponentials and trigonometric functions along the diagonal with specialised functions such as $ \mathrm{expm}1(x) = \exp(x) - 1 $, designed for this purpose\cite{hewlett-packard_hp_1994}.
+		The identity is added to the result of the iterative residual squaring and the full exponential is returned.
 		
 		% % Choice of n. n is large number, integer, power of 2. Efficiently by iterated squaring. Reference. % Revisit!!!
 		% Here $ z = 2^{-\tau}\frac{\omega_z}{2} $, $ q = 2^{-\tau}\frac{\omega_q}{6} $, $ \phi = 2^{-\tau}\sqrt{\omega_x^2 + \omega_y^2} $, and $ \phi = \mathrm{atan}2(\omega_y, \omega_x) $.
@@ -423,12 +433,10 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		%	Trotter
 		% 	Evaluating T
 		% 	Iterated squaring
-
 		% This spin-one exponentiator cannot solve arbitrary spin-one quantum systems, as that would require the ability to exponentiate a point in the full, 8-dimensional Lie algebra of $ \mathfrak{su}(3) $, rather than just the 4-dimensional subspace spanned by the subalgebra $ \mathfrak{su}(2) $ spanned by $ \{J_x, J_y, J_z, Q\} $, and the single quadratic operator $ Q $.
 		This spin-one exponentiator evolves Hamiltonians spanned by $ J_x, J_y, J_z $ and $ Q $ which is sufficient for three level systems in arbitrary bias fields, but with single-photon coupling.
 		An exponentiator capable of evolving an arbitrary spin-one Hamiltonian, for example with different coupling between the lower and upper pairs of states, or with two-photon coupling, is included in the package.
 		When assessing accuracy for spin-one problems, we have used the single-photon exponentiator.
-		% though this was not rigorously tested as our lab does not deal with physical systems that would require this functionality to work.
 
 		Note that, the methods for both spin-half and spin-one use analytic forms of matrix exponentials so that $ T $ is unitary by construction; $ \mathcal{U}=T^n $ is then also unitary.
 		Simulations in \emph{spinsim} thus maintain unitarity and so conserve probability even over very large numbers of time steps.
@@ -453,6 +461,11 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		% Within each parallel discretisation, we ...
 		Beyond discretisation for parallelisation, we discretise our time-evolution operator into individual integration time steps.
 		Each of the $ \mathcal{U}_k $ is further split into products $ u^k_{L-1} \cdots u^k_0 $ of $ L $ time-evolution operators, now separated by the integration time step $ \mathrm{d}t = \mathrm{D}t/L $.
+		
+		To choose an appropriate value of $ \mathrm{d}t $, users can use the accuracy plots in Figures \ref{fig:benchmark_spin_one_step_error} and \ref{fig:benchmark_spin_half_step_error} .
+		To choose an appropriate value of $ \mathrm{D}t $, users must consider two factors.
+		For the most benefit out of GPU parallelisation, users should choose $ \mathrm{D}t $ so that the number of time samples $ K $ is at least as large as the number of GPU cores available for \emph{spinsim}.
+		Users should also make sure $ \mathrm{D}t $ represents a large enough sample rate for the state $ \psi_k $ or expected spin projection $ \left\langle \overrightarrow{J}\right\rangle_k $ to be used in their further analysis.
 		% Comment on number of samples for cores or whatever physics is being done
 		% Introduce K if it turns out I use it later
 
@@ -466,34 +479,57 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 
 	\subsection{Dynamically rotating frame}
 		Hamiltonians which have dominant and slowly-varying terms induce rotations around a primary axis, which is usually chosen to be the quantisation axis $ z $.
-		By transforming into a frame rotating around this axis, a new Hamiltonian $ H^r $ with reduced norm is formed, making the time evolution operators more accurate.
-		In numerical analysis, this is known as preconditioning [\emph{Is this right James?}]; in quantum mechanics, as transforming to the interaction picture.
-		% condition number?
-		% Use rotation matrix
-		If the rotating frame option is selected, the time-evolution operators $ \mathcal{U}_k $ are first calculated within a rotating frame of reference as $ \mathcal{U}^r_k $, which, in some situations, reduces the size of the field functions used in the calculation, increasing accuracy.
-		The rotation speed of the rotating frame is calculated locally for each parallel time step $ \mathcal{U}_k $, and only for rotations around the $ z $ axis.
-		The rotating from field functions $ \omega^r_x, \omega^r_y, \omega^r_z, $ and $ \omega^r_q $ are related to the field function $ \omega $ from the user input via
+		Transforming from the lab (standard) frame of reference into one rotating around this axis by rotation operator $ R_{\omega_r}(t) = \exp(i\omega_r J_z t) $, the resulting system follows a new Hamiltonian
 		\begin{align}
-			\omega^r_x(t) + i\omega^r_y(t) &= e^{-i \omega_r t}(\omega_x(t) + i\omega_y(t)),\\
-			\omega^r_z(t) &= \omega_z(t) - \omega_r\quad\text{and}\\
-			\omega^r_q(t) &= \omega_q(t),\quad\text{for spin-one.}
+			H_r(t) &= R_{\omega_r}(t) (\omega_x(t) J_x + \omega_y(t) J_y) R_{\omega_r}(-t) + (\omega_z(t) - \omega_r)J_z +\omega_q(t) Q
 		\end{align}
-		
-		Where $ \omega_r = \omega_z(t_k + \frac12\mathrm{D}t) $ is sampled the midpoint value of the fields over the interval $ [t_{k - 1}, t_k] $.
-		This, assuming that a midpoint sample is representative of an average value over the time interval, decreases the magnitude of $ \omega_z(t) $, while leaving the other field components at an equivalent magnitude.
-		The rotation is then applied to obtain the lab frame time-evolution operator $ \mathcal{U}_k $ via
-		\begin{align}
-			\mathcal{U}_k &= \exp(-i \omega_r J_z \mathrm{D}t) \mathcal{U}^r_k.
-		\end{align}
-		Specifically, this relationship is $ \mathcal{U}_k = \mathrm{diag}\left(\exp\left(-i \frac12 \omega_r \mathrm{D}t\right), \exp\left(i \frac12 \omega_r \mathrm{D}t\right)\right) $ for spin-half, and $ \mathcal{U}_k = \mathrm{diag}(\exp(-i \omega_r \mathrm{D}t), 0, \exp(i \omega_r \mathrm{D}t)) $ for spin-one.
-
-		% Put up the top
 		It is a common technique in solving quantum mechanical problems to enter rotating frames, and their more abstract counterparts of interaction pictures\cite{j_j_sakurai_jun_john_modern_1994}.
-		This is typically done in to enable the Rotating Wave Approximation (RWA), which is an assumption that the oscillatory components of $ \omega^r_x, \omega^r_y, \omega^r_z, $ and $ \omega^r_q $ on an average make minor contributions to time evolution, and can be ignored.
-		In some cases, this allows for analytic solutions to the approximate quantum system to be obtained.
-		Note that the RWA is \emph{not} invoked in \emph{spinsim}, as doing this would reduce the accuracy of simulation results, defeating our purpose of using a rotating frame.
-		% Can still benefit from the rotating frame ...
-		% Can still key in RWA Hamiltonians
+		This almost always done to enable the Rotating Wave Approximation (RWA), which is an assumption that the oscillatory components of $ H_r(t) $ on average make minor contributions to time evolution, and can be ignored.
+		In some cases, this allows one to obtain analytic, but approximate, solutions to the quantum system.
+		Note that the RWA is never invoked by \emph{spinsim}, as doing this would reduce the accuracy of simulation results; although a problem already expressed in a rotating frame can of course be input by the user if desired.
+		In fact, because of the speed increase of \emph{spinsim} compared to alternatives, users who would have previously simulated their systems using the RWA due to speed concerns may now wish to use \emph{spinsim} to simulate beyond RWA effects that would previously have been missed.
+
+		Instead we take advantage of rotating frames to increase numerical accuracy.
+		By our assumption that $ |\omega_r| \approx |\omega_z(t)| \ge |\omega_x(t)|, |\omega_y(t)|, |\omega_q(t)| $ for the duration we have entered the frame, then the rotating frame Hamiltonian will have a smaller norm than the lab frame Hamiltonian.
+		This will yield a more accurate results when making discrete time steps by the integrator, as the distances stepped are smaller.
+
+		A different rotating frame is entered by \emph{spinsim} for each time interval $ [t_{k - 1}, t_k] $.
+		This dynamic application allows for the rotating frame to be used even during sweeps of the dominant term $ \omega_z(t) $ where it is only approximately constant locally.
+		Here we choose $ \omega_r = \omega_z(t_{k - 1} + \mathrm{D}t/2) $ as an approximate average value of $ \omega_z(t) $ over the duration.
+		The calculated time-evolution operator $ \mathcal{U}_k^r $ is then transformed back to the lab frame as
+		\begin{align}
+			\mathcal{U}_k &= R_{\omega_r}(-\mathrm{D}t)\mathcal{U}_k^r.\label{eq:exit_rotating_frame}
+		\end{align}
+		This functionality can be disabled for systems that do not fit these criteria.
+
+		% % By transforming into a frame rotating around this axis, a new Hamiltonian $ H^r $ with reduced norm is formed, making the time evolution operators more accurate.
+		% % In numerical analysis, this is known as preconditioning [\emph{Is this right James?}]; in quantum mechanics, as transforming to the interaction picture.
+		% % condition number?
+		% % Use rotation matrix
+		% If the rotating frame option is selected, the time-evolution operators $ \mathcal{U}_k $ are first calculated within a rotating frame of reference as $ \mathcal{U}^r_k $, which, in some situations, reduces the size of the field functions used in the calculation, increasing accuracy.
+		% The rotation speed of the rotating frame is calculated locally for each parallel time step $ \mathcal{U}_k $, and only for rotations around the $ z $ axis.
+		% The rotating from field functions $ \omega^r_x, \omega^r_y, \omega^r_z, $ and $ \omega^r_q $ are related to the field function $ \omega $ from the user input via
+		% \begin{align}
+		% 	\omega^r_x(t) + i\omega^r_y(t) &= e^{-i \omega_r t}(\omega_x(t) + i\omega_y(t)),\\
+		% 	\omega^r_z(t) &= \omega_z(t) - \omega_r\quad\text{and}\\
+		% 	\omega^r_q(t) &= \omega_q(t),\quad\text{for spin-one.}
+		% \end{align}
+		
+		% Where $ \omega_r = \omega_z(t_k + \frac12\mathrm{D}t) $ is sampled the midpoint value of the fields over the interval $ [t_{k - 1}, t_k] $.
+		% This, assuming that a midpoint sample is representative of an average value over the time interval, decreases the magnitude of $ \omega_z(t) $, while leaving the other field components at an equivalent magnitude.
+		% The rotation is then applied to obtain the lab frame time-evolution operator $ \mathcal{U}_k $ via
+		% \begin{align}
+		% 	\mathcal{U}_k &= \exp(-i \omega_r J_z \mathrm{D}t) \mathcal{U}^r_k.
+		% \end{align}
+		% Specifically, this relationship is $ \mathcal{U}_k = \mathrm{diag}\left(\exp\left(-i \frac12 \omega_r \mathrm{D}t\right), \exp\left(i \frac12 \omega_r \mathrm{D}t\right)\right) $ for spin-half, and $ \mathcal{U}_k = \mathrm{diag}(\exp(-i \omega_r \mathrm{D}t), 0, \exp(i \omega_r \mathrm{D}t)) $ for spin-one.
+
+		% % Put up the top
+		% It is a common technique in solving quantum mechanical problems to enter rotating frames, and their more abstract counterparts of interaction pictures\cite{j_j_sakurai_jun_john_modern_1994}.
+		% This is typically done in to enable the Rotating Wave Approximation (RWA), which is an assumption that the oscillatory components of $ \omega^r_x, \omega^r_y, \omega^r_z, $ and $ \omega^r_q $ on an average make minor contributions to time evolution, and can be ignored.
+		% In some cases, this allows for analytic solutions to the approximate quantum system to be obtained.
+		% Note that the RWA is \emph{not} invoked in \emph{spinsim}, as doing this would reduce the accuracy of simulation results, defeating our purpose of using a rotating frame.
+		% % Can still benefit from the rotating frame ...
+		% % Can still key in RWA Hamiltonians
 		
 	% \subsubsection{Magnus based integration method}
 	% 	The integration method used in \emph{spinsim} is the commutator free 4 (CF4) method from Auer et al\cite{auer_magnus_2018}, which based on the Magnus expansion. Each of the $ \mathcal{U}_k $ are split into products of time evolution operators between times separated by a smaller time step, that is,
@@ -532,19 +568,26 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 
 % \subsection{Software architecture}
 	\subsection{Integrator architecture}
+		\begin{figure}[h!]
+			\centering
+			\includegraphics[scale=0.475]{architecture.pdf}
+			\caption{The architecture of \emph{spinsim}}
+			\label{fig:architecture}
+		\end{figure}
+		A visual summary of the architecture of \emph{spinsim} is shown in Figure \ref{fig:architecture}.
 		The integrator in the \emph{spinsim} package calls a \texttt{numba.cuda.jit()}ed kernel to be run on a \emph{Cuda} capable \emph{Nvidia} GPU in parallel, with a different thread being allocated to each of the $ \mathcal{U}_k $.
-		This returns when each of the $ \mathcal{U}_k $ have been evaluated.
+		Alternatively, the kernel can be run in parallel on a multicore CPU if a compatible GPU is not available.
+		The kernel returns when each of the $ \mathcal{U}_k $ have been evaluated.
+
+		Each thread begins with initialisation of variables, which includes moving into the rotating frame.
+		It then starts a loop to find each of the time-stepping operators $ u^k_l $.
+		% The code then loops over each integration time step $ \mathrm{d}t $ to calculate the integration time-evolution operators $ u^k_l $.
+		Within the loop, the integrator enters a device function (ie a GPU subroutine. All device functions are inline for speed) to sample the user-provided field functions $ \omega_i(t) $.
+		After this, it makes applies the rotating frame transformation $R_{\omega_r}(t)$, before calculating the Gauss-Legendre weightings $ \overline{H}_1 $ and $ \overline{H}_2 $ in this frame. Next, the matrix exponentials are taken within another device function.
+		Finally, $ u^k_l $ is premultiplied to $ \mathcal{U}^r_k $ (which is initialised to the identity), and the loop continues.
 		
-		The thread starts by calculating $ t_k $ and, if the rotating frame is being used, $ \omega_r $.
-		The latter is done by sampling a (\texttt{numba.cuda.jit()}ed version of a) user provided \emph{python} function $ \omega $ describing how to sample the Hamiltonian.
-		The code then loops over each integration time step $ \mathrm{d}t $ to calculate the integration time-evolution operators $ u^k_l $.
-		
-		Within the loop, the integrator enters a device function (ie a GPU subroutine, which is inline for speed) to sample $ \omega(t) $, as well as calculate $ e^{-i \omega_r t} $, at the sample times needed for the integration method.
-		After this, it enters a second device function, which makes a rotating wave transformation as needed in a third device function, before calculating $ \overline{H}_1 $ and $ \overline{H}_2 $ values, and finally taking the matrix exponentiation in a fourth device function.
-		$ u^k_l $ is premultiplied to $ \mathcal{U}^r_k $ (which is initialised to $ 1 $), and the loop continues.
-		
-		When the loop has finished, if the rotating frame is being used, $ \mathcal{U}^r_k $ is transformed to $ \mathcal{U}_k $ as in Equation \eqref{eq:integration_compilation}, and this is returned.
-		Once all threads have executed, the state $ \psi_k $ is calculated in a (CPU) \texttt{numba.jit()}ed function from the $ \mathcal{U}_k $ and an initial condition $ \psi_{\mathrm{init}} $.
+		When the loop has finished, $ \mathcal{U}^r_k $ is transformed to $ \mathcal{U}_k $ as in Equation \eqref{eq:exit_rotating_frame}, and this is returned.
+		Once all threads have executed, using Equation \eqref{eq:integration_compilation}, the state $ \psi_k $ is calculated in a (CPU) \texttt{numba.jit()}ed function from the $ \mathcal{U}_k $ and an initial condition $ \psi_{\mathrm{init}} $.
 
 
 	\subsection{Compilation of integrator}
@@ -563,7 +606,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		Note that the expected spin projection is calculated as a lazy parameter if needed, rather than returned by the simulator object.
 
 		\emph{spinsim} is designed so that a single simulator compilation can be used to execute many simulations, sweeping through a particular parameter, while not needing to be recompiled.
-		This is done through the \texttt{sweep\_parameter} argument to the user provided field function $ \omega $.
+		This is done through the \texttt{sweep\_parameter} argument to the user-provided field function $ \omega $.
 		The user uses \texttt{sweep\_parameter} to determine a variable parameter for the Hamiltonian.
 		After compiling the \texttt{spinsim.Simulator} object, the user can set the value for \texttt{sweep\_parameter} for a particular simulation as the first argument when calling the function \texttt{spinsim.Simulator.evaluate()}.
 		For a use case example, one might want to simulate many spin systems at different locations in a magnetic field gradient in an MRI experiment.

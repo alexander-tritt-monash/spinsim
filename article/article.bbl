@@ -111,6 +111,12 @@ Barthel T, Zhang Y.
 \newblock Available from:
   \url{https://www.sciencedirect.com/science/article/pii/S0003491620300981}.
 
+\bibitem{organick_fortran_1966}
+Organick EI.
+\newblock A {Fortran} {IV} primer.
+\newblock Reading, Mass.: Addison-Wesley; 1966.
+\newblock OCLC: 217508.
+
 \bibitem{suzuki_generalized_1976}
 Suzuki M.
 \newblock Generalized {Trotter}'s formula and systematic approximants of
@@ -118,6 +124,11 @@ Suzuki M.
   problems.
 \newblock Communications in Mathematical Physics. 1976 Jun;51(2):183--190.
 \newblock Available from: \url{http://link.springer.com/10.1007/BF01609348}.
+
+\bibitem{hewlett-packard_hp_1994}
+Hewlett-Packard. {HP} {48G} {Series} {Advanced} {User}'s {Reference} {Manual}.
+  Eric Rechlin; 1994.
+\newblock Available from: \url{https://www.hpcalc.org/details/6036}.
 
 \bibitem{j_j_sakurai_jun_john_modern_1994}
 {J J Sakurai (Jun John)}.

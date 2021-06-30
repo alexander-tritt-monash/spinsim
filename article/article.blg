@@ -9,6 +9,7 @@ Reallocating 'glb_str_ptr' (item size: 4) to 20 items.
 Reallocating 'global_strs' (item size: 1) to 4000000 items.
 Reallocating 'wiz_functions' (item size: 4) to 6000 items.
 Database file #1: spinsim.bib
+Warning--empty author and editor in hewlett-packard_hp_1994
 Warning--empty author and editor in alexander-tritt-monash_alexander-tritt-monashneural-sense_2020
 Warning--missing publisher in alexander-tritt-monash_alexander-tritt-monashneural-sense_2020
 Warning--empty author and editor in wolfram_research_inc_mathematica_2020
@@ -18,45 +19,45 @@ Warning--missing publisher in noauthor_cuda_2012
 Warning--empty author in noauthor_cuda_2013
 Warning--empty author and editor in noauthor_cuda_2013
 Warning--missing publisher in noauthor_cuda_2013
-You've used 28 entries,
+You've used 30 entries,
             3177 wiz_defined-function locations,
-            865 strings with 11949 characters,
-and the built_in function-call counts, 44738 in all, are:
-= -- 5682
-> -- 272
+            876 strings with 12187 characters,
+and the built_in function-call counts, 45989 in all, are:
+= -- 5826
+> -- 280
 < -- 7
-+ -- 188
-- -- 67
-* -- 3655
-:= -- 4827
-add.period$ -- 132
-call.type$ -- 28
-change.case$ -- 19
++ -- 192
+- -- 69
+* -- 3735
+:= -- 4972
+add.period$ -- 138
+call.type$ -- 30
+change.case$ -- 20
 chr.to.int$ -- 6
-cite$ -- 37
-duplicate$ -- 3774
-empty$ -- 4342
-format.name$ -- 86
-if$ -- 10598
+cite$ -- 40
+duplicate$ -- 3880
+empty$ -- 4475
+format.name$ -- 88
+if$ -- 10902
 int.to.chr$ -- 0
-int.to.str$ -- 28
-missing$ -- 278
-newline$ -- 168
-num.names$ -- 30
-pop$ -- 524
+int.to.str$ -- 30
+missing$ -- 291
+newline$ -- 178
+num.names$ -- 32
+pop$ -- 560
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 0
-skip$ -- 509
+skip$ -- 538
 stack$ -- 0
-substring$ -- 8200
-swap$ -- 640
+substring$ -- 8358
+swap$ -- 668
 text.length$ -- 5
 text.prefix$ -- 0
 top$ -- 0
 type$ -- 0
-warning$ -- 9
-while$ -- 234
-width$ -- 30
-write$ -- 362
-(There were 9 warnings)
+warning$ -- 10
+while$ -- 242
+width$ -- 32
+write$ -- 384
+(There were 10 warnings)
