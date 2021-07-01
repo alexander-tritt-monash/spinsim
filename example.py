@@ -12,14 +12,14 @@ simulator_larmor = spinsim.Simulator(get_field_larmor, spinsim.SpinQuantumNumber
 
 results_larmor = simulator_larmor.evaluate(0e-3, 100e-3, 100e-9, 500e-9, spinsim.SpinQuantumNumber.HALF.plus_x)
 
-plt.figure()
-plt.plot(results_larmor.time, results_larmor.spin)
-plt.legend(["x", "y", "z"])
-plt.xlim(0e-3, 2e-3)
-plt.xlabel("time (s)")
-plt.ylabel("spin expectation (hbar)")
-plt.title("Spin projection for Larmor precession")
-plt.show()
+# plt.figure()
+# plt.plot(results_larmor.time, results_larmor.spin)
+# plt.legend(["x", "y", "z"])
+# plt.xlim(0e-3, 2e-3)
+# plt.xlabel("time (s)")
+# plt.ylabel("spin expectation (hbar)")
+# plt.title("Spin projection for Larmor precession")
+# plt.show()
 
 import spinsim
 import numpy as np
@@ -58,4 +58,4 @@ plt.ylabel("spin expectation (hbar)")
 plt.title("Spin projection for Rabi flopping")
 plt.draw()
 
-plt.show()
+# plt.show()

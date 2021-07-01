@@ -936,13 +936,13 @@ class Simulator:
             self.get_time_evolution_raw(sweep_parameters, time, time_end_points, time_step_integration, time_step_output, time_evolution_output)
 
         elif self.device == Device.CUDA:
-            time = cuda.device_array(time_index_max, np.float64)
-            time_evolution_output = cuda.device_array((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
-
-            sweep_parameters_device = cuda.to_device(sweep_parameters)
-
-            blocks_per_grid = (time.size + (self.threads_per_block - 1)) // self.threads_per_block
             try:
+                time = cuda.device_array(time_index_max, np.float64)
+                time_evolution_output = cuda.device_array((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
+
+                sweep_parameters_device = cuda.to_device(sweep_parameters)
+
+                blocks_per_grid = (time.size + (self.threads_per_block - 1)) // self.threads_per_block
                 self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](sweep_parameters_device, time, time_end_points, time_step_integration, time_step_output, time_evolution_output)
             except:
                 print("\033[31mspinsim error!!!\nnumba.cuda could not jit get_field function into a cuda device function.\033[0m\n")
@@ -952,13 +952,13 @@ class Simulator:
             time = time.copy_to_host()
         
         elif self.device == Device.ROC:
-            time = roc.device_array(time_index_max, np.float64)
-            time_evolution_output = roc.device_array((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
-
-            sweep_parameters_device = roc.to_device(sweep_parameters)
-
-            blocks_per_grid = (time.size + (self.threads_per_block - 1)) // self.threads_per_block
             try:
+                time = roc.device_array(time_index_max, np.float64)
+                time_evolution_output = roc.device_array((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
+
+                sweep_parameters_device = roc.to_device(sweep_parameters)
+
+                blocks_per_grid = (time.size + (self.threads_per_block - 1)) // self.threads_per_block
                 self.get_time_evolution_raw[blocks_per_grid, self.threads_per_block](sweep_parameters_device, time, time_end_points, time_step_integration, time_step_output, time_evolution_output)
             except:
                 print("\033[31mspinsim error!!!\nnumba.roc could not jit get_field function into a roc device function.\033[0m\n")

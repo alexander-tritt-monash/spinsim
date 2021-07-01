@@ -1,34 +1,18 @@
 \begin{thebibliography}{10}
 
-\bibitem{lam_numba_2015}
-Lam SK, Pitrou A, Seibert S.
-\newblock Numba: a {LLVM}-based {Python} {JIT} compiler.
-\newblock In: Proceedings of the {Second} {Workshop} on the {LLVM} {Compiler}
-  {Infrastructure} in {HPC} - {LLVM} '15. Austin, Texas: ACM Press; 2015. p.
-  1--6.
-\newblock Available from:
-  \url{http://dl.acm.org/citation.cfm?doid=2833157.2833162}.
-
-\bibitem{lattner_llvm_2004}
-Lattner C, Adve V.
-\newblock {LLVM}: a compilation framework for lifelong program analysis
-  transformation.
-\newblock In: International {Symposium} on {Code} {Generation} and
-  {Optimization}, 2004. {CGO} 2004.; 2004. p. 75--86.
-
-\bibitem{nickolls_scalable_2008}
-Nickolls J, Buck I, Garland M, Skadron K.
-\newblock Scalable {Parallel} {Programming} with {CUDA}: {Is} {CUDA} the
-  parallel programming model that application developers have been waiting for?
-\newblock Queue. 2008 Mar;6(2):40--53.
-\newblock Available from: \url{https://doi.org/10.1145/1365490.1365500}.
-
 \bibitem{degen_quantum_2017}
 Degen CL, Reinhard F, Cappellaro P.
 \newblock Quantum sensing.
 \newblock Reviews of Modern Physics. 2017 Jul;89(3):035002.
 \newblock Available from:
   \url{https://link.aps.org/doi/10.1103/RevModPhys.89.035002}.
+
+\bibitem{gell-mann_symmetries_1962}
+Gell-Mann M.
+\newblock Symmetries of {Baryons} and {Mesons}.
+\newblock Physical Review. 1962 Feb;125(3):1067--1084.
+\newblock Available from:
+  \url{https://link.aps.org/doi/10.1103/PhysRev.125.1067}.
 
 \bibitem{hamley_spin-nematic_2012}
 Hamley CD, Gerving CS, Hoang TM, Bookjans EM, Chapman MS.
@@ -53,6 +37,13 @@ Mockler RC.
   {Physics}. vol.~15. Academic Press; 1961. p. 1--71.
 \newblock Available from:
   \url{https://www.sciencedirect.com/science/article/pii/S0065253908609312}.
+
+\bibitem{bloch_nuclear_1946}
+Bloch F.
+\newblock Nuclear {Induction}.
+\newblock Physical Review. 1946 Oct;70(7-8):460--474.
+\newblock Available from:
+  \url{https://link.aps.org/doi/10.1103/PhysRev.70.460}.
 
 \bibitem{kalev_integral-free_2020}
 Kalev A, Hen I.
@@ -125,6 +116,15 @@ Suzuki M.
 \newblock Communications in Mathematical Physics. 1976 Jun;51(2):183--190.
 \newblock Available from: \url{http://link.springer.com/10.1007/BF01609348}.
 
+\bibitem{virtanen_scipy_2020}
+Virtanen P, Gommers R, Oliphant TE, Haberland M, Reddy T, Cournapeau D, et~al.
+\newblock {SciPy} 1.0: fundamental algorithms for scientific computing in
+  {Python}.
+\newblock Nature Methods. 2020 Mar;17(3):261--272.
+\newblock Number: 3 Publisher: Nature Publishing Group.
+\newblock Available from:
+  \url{https://www.nature.com/articles/s41592-019-0686-2}.
+
 \bibitem{hewlett-packard_hp_1994}
 Hewlett-Packard. {HP} {48G} {Series} {Advanced} {User}'s {Reference} {Manual}.
   Eric Rechlin; 1994.
@@ -134,6 +134,37 @@ Hewlett-Packard. {HP} {48G} {Series} {Advanced} {User}'s {Reference} {Manual}.
 {J J Sakurai (Jun John)}.
 \newblock Modern quantum mechanics.
 \newblock Rev. ed. ed. Reading, Mass.: Addison-Wesley PubCo; 1994.
+
+\bibitem{lam_numba_2015}
+Lam SK, Pitrou A, Seibert S.
+\newblock Numba: a {LLVM}-based {Python} {JIT} compiler.
+\newblock In: Proceedings of the {Second} {Workshop} on the {LLVM} {Compiler}
+  {Infrastructure} in {HPC} - {LLVM} '15. Austin, Texas: ACM Press; 2015. p.
+  1--6.
+\newblock Available from:
+  \url{http://dl.acm.org/citation.cfm?doid=2833157.2833162}.
+
+\bibitem{nickolls_scalable_2008}
+Nickolls J, Buck I, Garland M, Skadron K.
+\newblock Scalable {Parallel} {Programming} with {CUDA}: {Is} {CUDA} the
+  parallel programming model that application developers have been waiting for?
+\newblock Queue. 2008 Mar;6(2):40--53.
+\newblock Available from: \url{https://doi.org/10.1145/1365490.1365500}.
+
+\bibitem{lattner_llvm_2004}
+Lattner C, Adve V.
+\newblock {LLVM}: a compilation framework for lifelong program analysis
+  transformation.
+\newblock In: International {Symposium} on {Code} {Generation} and
+  {Optimization}, 2004. {CGO} 2004.; 2004. p. 75--86.
+
+\bibitem{harris_array_2020}
+Harris CR, Millman KJ, van~der Walt SJ, Gommers R, Virtanen P, Cournapeau D,
+  et~al.
+\newblock Array programming with {NumPy}.
+\newblock Nature. 2020 Sep;585(7825):357--362.
+\newblock Available from:
+  \url{https://www.nature.com/articles/s41586-020-2649-2}.
 
 \bibitem{alexander-tritt-monash_alexander-tritt-monashneural-sense_2020}
 alexander-tritt monash. alexander-tritt-monash/neural-sense; 2020.
@@ -153,15 +184,6 @@ Johansson JR, Nation PD, Nori F.
 Wolfram~Research I. Mathematica. Champaign, Illinois: Wolfram Research, Inc.;
   2020.
 \newblock Available from: \url{https://www.wolfram.com/mathematica}.
-
-\bibitem{virtanen_scipy_2020}
-Virtanen P, Gommers R, Oliphant TE, Haberland M, Reddy T, Cournapeau D, et~al.
-\newblock {SciPy} 1.0: fundamental algorithms for scientific computing in
-  {Python}.
-\newblock Nature Methods. 2020 Mar;17(3):261--272.
-\newblock Number: 3 Publisher: Nature Publishing Group.
-\newblock Available from:
-  \url{https://www.nature.com/articles/s41592-019-0686-2}.
 
 \bibitem{noauthor_cuda_2012}
 {CUDA} {GPUs}; 2012.

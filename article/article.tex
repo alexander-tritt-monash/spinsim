@@ -54,10 +54,10 @@ spinsim: a GPU optimised simulator of spin-half and spin-one quantum systems
 
 \section{Abstract}
 	The \emph{spinsim} \emph{python} package simulates spin-half and spin-one quantum mechanical systems following a time dependent Shroedinger equation.
-	It makes use of \texttt{numba.cuda}\cite{lam_numba_2015}, which is an \emph{LLVM} (Low Level Virtual Machine)\cite{lattner_llvm_2004} compiler for \emph{Nvidia Cuda}\cite{nickolls_scalable_2008} compatible systems using GPU parallelisation. 
+	It makes use of \texttt{numba.cuda}, which is an \emph{LLVM} (Low Level Virtual Machine) compiler for \emph{Nvidia Cuda} compatible systems using GPU parallelisation. 
 	Along with other optimisations, this allows for speed improvements of up to four orders of magnitude while keeping staying just as accurate.
 	\emph{spinsim} is available for installation on \emph{PyPI}, and the source code is available on \emph{github}.
-	The initial use case for the package will be to simulate quantum sensing-based Bose Einstein condensate (BEC) experiments for the Monash University School of Physics and Astronomy spinor BEC lab, but we anticipate it will be useful in simulating any range of spin-half or spin-one quantum systems with time dependent Hamiltonians that cannot be solved analytically.
+	The initial use-case for the package will be to simulate quantum sensing-based Bose Einstein condensate (BEC) experiments for the Monash University School of Physics and Astronomy spinor BEC lab, but we anticipate it will be useful in simulating any range of spin-half or spin-one quantum systems with time dependent Hamiltonians that cannot be solved analytically.
 	These appear in the fields of nuclear magnetic resonance (NMR), nuclear quadrupole resonance (NQR) and magnetic resonance imaging (MRI) experiments and quantum sensing, and with the spin-one systems of nitrogen vacancy centres (NVCs) and BECs.
 
 \section{Keywords}
@@ -77,7 +77,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 	% \texttt{AtomicPy}\cite{morris_qcmonkatomicpy_2018}
 	In the past, the spinor Bose Einstein condensate (spinor BEC) lab at Monash University used an in-house, \emph{cython} based script, on which this package is based, and standard differential equation solvers (such as \emph{Mathematica}'s function \texttt{NDSolve}) to solve the Schroedinger equation for quantum sensing spin systems.
 	Spin one systems are sometimes approximated to spin-half for a faster execution time, at the cost of modelling all effects of the system.
-	However, these methods are not completely optimised for our use case, and therefore come with some issues.
+	However, these methods are not completely optimised for our use-case, and therefore come with some issues.
 
 	First, while the execution time for these solvers is acceptable for running a small number of experiments, for certain experiments involving large arrays of independent atom clouds (which require many thousands of simulations to be run), this time accumulates to the order of many hours, or even multiple days.
 
@@ -98,15 +98,15 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 \section{Implementation and architecture}
 	% \subsection{Mathematical methods}
 	\subsection{Quantum mechanics background}
-		\emph{spinsim} solves the time-dependent Schr\"{o}dinger equation
+		The \emph{spinsim} package solves the time-dependent Schr\"{o}dinger equation
 		\begin{align}
 			i\hbar\frac{\mathrm{d}\psi(t)}{\mathrm{d}t} &= H(t)\psi(t),\label{eq:schroedinger}
 		\end{align}
 		where the quantum state $ \psi(t) \in \mathbb{C}^N $ is assumed normalised, and the Hamiltonian $ H(t) \in \mathbb{C}^{N \times N} $ is Hermitian.
 		Here $ N $ is the number of levels in the quantum system.
 		Often we are considering systems with spin $ J $ of half or one.
-		Here spin-half is the $ N = 2 $ case, and spin-one is $ N = 3 $.
-		We set $ \hbar = 1 $, so that the Hamiltonian has physical dimension of inverse frequency.
+		Spin-half is the $ N = 2 $ case, and spin-one is $ N = 3 $.
+		We set $ \hbar = 1 $, so that the Hamiltonian has physical dimension of angular frequency.
 		% Furthermore, we have chosen for the Hamiltonian $ H(t) $ to have the physical dimension of frequency, rather than the more typical dimension of energy. To elaborate, we represent energies $ E $ of the system as their equivalent frequencies $ f $ from the Planck relation
 		
 		% \begin{align}
@@ -119,36 +119,36 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 
 		Rather than parametrizing the problem in terms of the matrix elements of $ H(t) $, we consider time varying real coefficients in a linear combination of fixed operators,
 		\begin{align}
-			H(t) &= \sum_{j = 1}^{N^2 - 1} \omega_j(t) O_j.
+			H(t) &= \sum_{j = 1}^{N^2 - 1} \omega_j(t) \mathcal{A}_j.
 		\end{align}
 		It is well known that a charged spin-half system with magnetic moment $ \overrightarrow{\mu} $, and gyromagnetic ratio $ \gamma $, in a magnetic field $ \overrightarrow{B}(t) $, has Hamiltonian
 		\begin{align}
 			H(t) &= -\overrightarrow{B}(t)\cdot \overrightarrow{\mu}\\
-			&= -\gamma \overrightarrow{B}(t)\cdot \overrightarrow{J}\\
+			% &= -\gamma \overrightarrow{B}(t)\cdot \overrightarrow{J}\\
 			&= -\gamma \left(B_x(t) J_x + B_y(t) J_y + B_z(t) J_z\right)\\
-			&= \left(-\gamma B_x(t) J_x\right) + \left(-\gamma B_y(t) J_y\right) + \left(-\gamma B_z(t) J_z\right)\\
+			% &= \left(-\gamma B_x(t) J_x\right) + \left(-\gamma B_y(t) J_y\right) + \left(-\gamma B_z(t) J_z\right)\\
 			&= \omega_x(t) J_x + \omega_y(t) J_y + \omega_z(t) J_z.
 		\end{align}
 
-		Here $ J_x, J_y $ and $ J_z $ are spin operators, equal to the Pauli matrices scaled down by $ \frac12 $.
-		We exclude the identity so that the Hamiltonian is traceless, which we can do because it corresponds to choosing an energy zero point, which is physically meaningless.
+		Here $ J_x, J_y $ and $ J_z $ are spin operators, equal to the Pauli matrices halved.
+		We exclude the identity so that the Hamiltonian is traceless, which we can do because it corresponds to choosing a physically meaningless energy zero point.
 
-		In the spin-one case there is no standard basis of operators $ A_j $.
-		Choices include the Gell Mann matrices, and multiple dipole-quadrupole bases\cite{hamley_spin-nematic_2012}\cite{di_dipolequadrupole_2010}.
+		In the spin-one case there is no standard basis of operators $ \mathcal{A}_j $.
+		Choices include the Gell-Mann matrices\cite{gell-mann_symmetries_1962}, and multiple dipole-quadrupole bases\cite{hamley_spin-nematic_2012}\cite{di_dipolequadrupole_2010}.
 		In general, we can choose any basis from the 8-dimensional Lie algebra $ \mathfrak{su}(3) $, which is the vector space of traceless Hermitian operators that can generate transformations (from the corresponding Lie group $ SU(3) $) in the spin-one system.
-		With this in mind, we choose to represent the Hamiltonian a linear combination of matrices from a 4-dimensional subspace of $ \mathfrak{su}(3) $, consisting of the spin matrices $ J_x, J_y $ and $ J_z $, and a single quadrupole operator $ Q = \frac13\mathrm{diag}(1, -2, 1) $,
+		With this in mind, we choose to represent the Hamiltonian a linear combination of matrices from a 4-dimensional subspace of $ \mathfrak{su}(3) $, consisting of the spin matrices $ J_x, J_y $ and $ J_z $, and a single quadrupole operator $ Q = \mathrm{diag}(1, -2, 1)/3 $,
 		\begin{align}
 			H(t) &= \omega_x(t) J_x + \omega_y(t) J_y + \omega_z(t) J_z + \omega_q(t) Q.
 		\end{align}
 		
 		Note that $ Q $ is proportional to $ Q_{zz} $\cite{hamley_spin-nematic_2012} and $ Q_0 $\cite{di_dipolequadrupole_2010} from alternative quadrupole bases.
 		These are the only operators necessary to simulate many spin-one quantum systems, including quadratic Zeeman splitting described by the Breit-Rabi formula\cite{mockler_atomic_1961} important to experiments in our lab.
-		The \emph{spinsim} simulator can also be configured to solve a general spin-one system by setting the Hamiltonian to an arbitrary point in $ \mathfrak{su}(3) $, using the full quadrupole basis, which extends the possible Hamiltonian to
+		The \emph{spinsim} simulator can also be configured to solve a general spin-one system by setting the Hamiltonian to an arbitrary point in $ \mathfrak{su}(3) $ using the full quadrupole basis, which extends the possible Hamiltonian to
 		\begin{align}
-			H(t) &= \omega_x(t) J_x + \omega_y(t) J_y + \omega_z(t) J_z + \omega_q(t) Q\nonumber\\
+			H(t) =& \omega_x(t) J_x + \omega_y(t) J_y + \omega_z(t) J_z + \omega_q(t) Q\nonumber\\
 			&+ \omega_{u1}(t) U_1 + \omega_{u2}(t) U_2 + \omega_{v1}(t) V_1 + \omega_{v2}(t) V_2.
 		\end{align}
-		Here the added operators are those defined in\cite{di_dipolequadrupole_2010}. Note that this is included for completeness, but has not been thoroughly tested, as our lab has no physical context for modelling the $ U_1, U_2, V_1 $ and $ V_2 $ operators.
+		Here the additional operators are those defined in\cite{di_dipolequadrupole_2010}. Note that this is included for completeness, but has not been thoroughly tested, as our lab has no physical context for modelling the $ U_1, U_2, V_1 $ and $ V_2 $ operators.
 		% In general ... Lie algebra ... mathfrak ... admits a basis ... .
 		% \begin{align}
 		% 	\frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (f_x(t) J_x + f_y(t) J_y + f_z(t) J_z) \psi(t),
@@ -213,9 +213,13 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		% Too far out of scope
 		% Alternative: integrate Bloch equations 3 coupled real equations
 		% fast and parallel function from wavefunctions
-		As well as integrating the Schr\"odinger equation, \emph{spinsim} also has the functionality to calculate the expected spin projection $ \left\langle \overrightarrow{J}\right\rangle (t) $ of a system from its state.
+		As well as integrating the Schr\"odinger equation, \emph{spinsim} also has the functionality to calculate the expected spin projection $ \langle \overrightarrow{J}\rangle (t) $ of a system from its state.
 		In an experimental setting, one cannot measure the value of the state itself, and must instead measure observables such as spin projection.
 		If this is done for an ensemble of systems, the average spin projection over all systems will converge to the expected value as calculated here.
+		As an alternative to solving the Schr\"odinger equation, if one is only interested in the dynamics of the expected spin projection, one can instead solve for $ \langle \overrightarrow{J}\rangle (t) $ directly using the Bloch equations\cite{bloch_nuclear_1946}.
+		These are three coupled real equations as compared to three coupled complex equations for the spin-one Schr\"odinger equation.
+		However, the Bloch equations cannot be used to compute $ \psi(t) $, and can only fully model spin-half systems (and spin-one systems approximated to spin-half).
+		Thus, with \emph{spinsim} we choose to solve the full Schr\"odinger equation instead.
 		
 		% Frequently when one calculates the times series of the quantum state $ \psi(t) $, they are also interested in its expected spin projection. It is given by the vector
 
@@ -269,7 +273,11 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		% The terms $ \Omega_m(t) $ for $ m > 1 $ are corrections to this approximation. One can truncate the Magnus series before infinity to make a Mangus expansion, which can given an approximation for $ \mathcal{U}(t, t_0) $.
 		% Importantly, any truncation of the Magnus expansion is unitary, meaning that probability will be conserved when used.
 
-		A Magnus series over a time step $ T $ will be guaranteed to converge only if $ \int_{t_0}^{t_0 + T}\mathrm{d}t_1\|H(t_1)\| < \pi $\cite{blanes_magnus_2009}. Furthermore, each subsequent term in the expansion increases in complexity rapidly. For these reasons, the Magnus expansion is used as a time stepping method rather than a single step to solve the complete system. Time stepping can be made from the fact that time evolution operators can be split into a product via
+		A Magnus series over a time step $ T $ will be guaranteed to converge only if $ \int_{t_0}^{t_0 + T}\mathrm{d}t_1\|H(t_1)\| < \pi $\cite{blanes_magnus_2009}.
+		Furthermore, each subsequent term in the expansion increases in complexity rapidly.
+		For these reasons, the Magnus expansion is generally used as a time stepping method rather than a single step to solve the complete system.
+		Designing a Magnus based solver is a trade-off between the number of terms used in each expansion, and the number of time steps used.
+		Time stepping can be made from the fact that time evolution operators can be split into a product via
 		\begin{align}
 			\mathcal{U}(t, t_0) &= \mathcal{U}(t, t_{n - 1})\mathcal{U}(t_{n - 1}, t_{n - 2})\cdots\mathcal{U}(t_2, t_1)\mathcal{U}(t_1, t_0).\label{eq:product_of_time_evolution}
 		\end{align}
@@ -302,9 +310,9 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		\end{align}% \approx? Unitary? End with sentence
 		is used to approximate the time-evolution operator.
 
-	\subsection{Exponentiator}
+	\subsection{Lie-Trotter based Exponentiator}
 		Evaluating matrix exponentials is a core part of the integration algorithm.
-		Rather than exponentiating the Hamiltonian directly as in Equation \eqref{eq:cf4_implementation}, \emph{spinsim} works with the field functions $ \omega_i(t) $.
+		Rather than exponentiating the Hamiltonian directly as in Equation \eqref{eq:cf4_implementation}, \emph{spinsim} works with the field functions $ \omega_j(t) $.
 		% as a vector representation of the Hamiltonian of the spin system being simulated, rather than generic matrix elements in an array.
 		% This allows for matrix exponentiators that take advantage of this representation.
 		% For all implementations of exponentiation, the \emph{spinsim} computes the matrix exponential
@@ -318,7 +326,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		% \end{align}
 		% In practice, $ \omega $ is the Lie algebra (spin and quadrature) basis representation of $ \overline{H_1} $ or $ \overline{H_2} $ defined in Equations \eqref{eq:cf4_sample_1} and \eqref{eq:cf4_sample_2}, which need to be exponentiated in Equation \eqref{eq:cf4_implementation}.
 
-		For spin-half, the exponentiator is in an analytic form in $ \omega_x, \omega_y $ and $ \omega_z $.% ... yz, which follows directly from eqref
+		For spin-half, the exponentiator is in an analytic form in $ \omega_x, \omega_y $ and $ \omega_z $. % ... yz, which follows directly from eqref
 		For spin-one, an exponentiator based on the Lie-Trotter product formula\cite{moler_nineteen_2003}
 		% Explicitly, this formula is
 		\begin{align}
@@ -408,9 +416,10 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 
 		Matrix exponentiation is completed by raising $ T $ to an integer $ n $.
 		To approximate the limit in Equation \eqref{eq:lie_trotter}, $ n $ must be a large number.
-		We choose $ n $ to be of the form $ n = 2^\tau $, as powers of two are particularly effient large numbers to raise matrices to.This can be done just by iterative squaring, which requires a small number of operations.
+		We choose $ n $ to be of the form $ n = 2^\tau $, as powers of two are particularly effient large numbers to raise matrices to.
+		This can be done just by iterative squaring, which requires a small number of operations.
 		While there are some loose lower bounds for the number of squares $ \tau $ \cite{suzuki_generalized_1976}, using these to choose a value can cause floating point errors from over-squaring.
-		Instead, we tested the formula on $ 10^5 $ matrices for different values of $ \tau $, and compared them to results given by \texttt{scipy.linalg.expm()}, from the popular python library \emph{SciPy}.
+		Instead, we tested the formula on $ 10^5 $ matrices for different values of $ \tau $, and compared them to results given by \texttt{scipy.linalg.expm()}, from the popular python library \emph{SciPy}\cite{virtanen_scipy_2020}.
 		We found that the error minimised after a number of squares of $ \tau = 24 $.
 		Thus, by default, $ n = 2^{24} $.
 
@@ -454,7 +463,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		Hence, the time-evolution operators $ \mathcal{U}_k $ can be calculated in parallel.
 		% It allows \emph{spinsim} to use GPU parallelisation on the level of time sample points, so a speed up is achieved even if just a single simulation is run.
 
-		\emph{spinsim} splits the full simulation into small time intervals $ [t_{k - 1}, t_{k}] $, and calculates time-evolution operators $ \mathcal{U}_k $ for these intervals in massive parallel on a GPU. % check phrase "massive"
+		\emph{spinsim} splits the full simulation into small time intervals $ [t_{k - 1}, t_{k}] $, and calculates time-evolution operators $ \mathcal{U}_k $ for these intervals massively in parallel on a GPU. % check phrase "massive"
 		% within small time intervals $ [t_{k - 1}, t_{k}] $, which are each calculated massively in parallel on a GPU.
 		When all the $ \mathcal{U}_k $ are calculated, the CPU then multiplies them together (a comparatively less demanding job than calculating them) using Equation \eqref{eq:integration_compilation} to determine the output samples $ \psi_k $ of the evolving state.
 
@@ -462,10 +471,12 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		Beyond discretisation for parallelisation, we discretise our time-evolution operator into individual integration time steps.
 		Each of the $ \mathcal{U}_k $ is further split into products $ u^k_{L-1} \cdots u^k_0 $ of $ L $ time-evolution operators, now separated by the integration time step $ \mathrm{d}t = \mathrm{D}t/L $.
 		
-		To choose an appropriate value of $ \mathrm{d}t $, users can use the accuracy plots in Figures \ref{fig:benchmark_spin_one_step_error} and \ref{fig:benchmark_spin_half_step_error} .
-		To choose an appropriate value of $ \mathrm{D}t $, users must consider two factors.
+		To choose an appropriate value of $ \mathrm{d}t $, users can use the accuracy plots in Figures \ref{fig:benchmark_spin_one_step_error} and \ref{fig:benchmark_spin_half_step_error}.
+		To choose an appropriate value of $ \mathrm{D}t $, users must consider three factors.
 		For the most benefit out of GPU parallelisation, users should choose $ \mathrm{D}t $ so that the number of time samples $ K $ is at least as large as the number of GPU cores available for \emph{spinsim}.
-		Users should also make sure $ \mathrm{D}t $ represents a large enough sample rate for the state $ \psi_k $ or expected spin projection $ \left\langle \overrightarrow{J}\right\rangle_k $ to be used in their further analysis.
+		Users should also make sure that $ \mathrm{D}t $ represents a large enough sample rate for the state $ \psi_k $ or expected spin projection $ \langle \overrightarrow{J}\rangle_k $ to be used in their further analysis.
+		Finally, if $ K $ is too large, then the GPU will run out of memory on compilation, which will raise an exception. % (which we found to be $ K = 3\cdot 10^8 $ sample points for the 10GiB \emph{GeForce RTX 3080}).
+		We found that a the 10GiB \emph{GeForce RTX 3080} could run at full memory capacity with 300 million sample points for spin-one mode and 600 million sample points for spin-half.
 		% Comment on number of samples for cores or whatever physics is being done
 		% Introduce K if it turns out I use it later
 
@@ -491,7 +502,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 
 		Instead we take advantage of rotating frames to increase numerical accuracy.
 		By our assumption that $ |\omega_r| \approx |\omega_z(t)| \ge |\omega_x(t)|, |\omega_y(t)|, |\omega_q(t)| $ for the duration we have entered the frame, then the rotating frame Hamiltonian will have a smaller norm than the lab frame Hamiltonian.
-		This will yield a more accurate results when making discrete time steps by the integrator, as the distances stepped are smaller.
+		This will yield more accurate results when making discrete time steps by the integrator, as the distances stepped are smaller.
 
 		A different rotating frame is entered by \emph{spinsim} for each time interval $ [t_{k - 1}, t_k] $.
 		This dynamic application allows for the rotating frame to be used even during sweeps of the dominant term $ \omega_z(t) $ where it is only approximately constant locally.
@@ -571,82 +582,88 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		\begin{figure}[h!]
 			\centering
 			\includegraphics[scale=0.475]{architecture.pdf}
-			\caption{The architecture of \emph{spinsim}}
+			\caption{The structure of \emph{spinsim}}
 			\label{fig:architecture}
 		\end{figure}
-		A visual summary of the architecture of \emph{spinsim} is shown in Figure \ref{fig:architecture}.
-		The integrator in the \emph{spinsim} package calls a \texttt{numba.cuda.jit()}ed kernel to be run on a \emph{Cuda} capable \emph{Nvidia} GPU in parallel, with a different thread being allocated to each of the $ \mathcal{U}_k $.
+		A visual summary of the structure of \emph{spinsim} is shown in Figure \ref{fig:architecture}.
+		The integrator in the \emph{spinsim} package calls a kernel (multithreaded function) to be run on a \emph{Cuda} capable \emph{Nvidia} GPU in parallel, with a different thread being allocated to each of the $ \mathcal{U}_k $.
 		Alternatively, the kernel can be run in parallel on a multicore CPU if a compatible GPU is not available.
 		The kernel returns when each of the $ \mathcal{U}_k $ have been evaluated.
 
 		Each thread begins with initialisation of variables, which includes moving into the rotating frame.
 		It then starts a loop to find each of the time-stepping operators $ u^k_l $.
 		% The code then loops over each integration time step $ \mathrm{d}t $ to calculate the integration time-evolution operators $ u^k_l $.
-		Within the loop, the integrator enters a device function (ie a GPU subroutine. All device functions are inline for speed) to sample the user-provided field functions $ \omega_i(t) $.
-		After this, it makes applies the rotating frame transformation $R_{\omega_r}(t)$, before calculating the Gauss-Legendre weightings $ \overline{H}_1 $ and $ \overline{H}_2 $ in this frame. Next, the matrix exponentials are taken within another device function.
+		Within the loop, the integrator enters a device function to sample the user-provided field functions $ \omega_j(t) $ (device functions are GPU subroutines, and in practice all device functions here are compiled inline for speed).
+		After this, it applies the rotating frame transformation $R_{\omega_r}(t)$, before calculating the Gauss-Legendre weightings $ \overline{H}_1 $ and $ \overline{H}_2 $. Next, the matrix exponentials are taken within another device function.
 		Finally, $ u^k_l $ is premultiplied to $ \mathcal{U}^r_k $ (which is initialised to the identity), and the loop continues.
 		
 		When the loop has finished, $ \mathcal{U}^r_k $ is transformed to $ \mathcal{U}_k $ as in Equation \eqref{eq:exit_rotating_frame}, and this is returned.
-		Once all threads have executed, using Equation \eqref{eq:integration_compilation}, the state $ \psi_k $ is calculated in a (CPU) \texttt{numba.jit()}ed function from the $ \mathcal{U}_k $ and an initial condition $ \psi_{\mathrm{init}} $.
+		Once all threads have executed, using Equation \eqref{eq:integration_compilation}, the state $ \psi_k $ is calculated in a (CPU) \texttt{numba.jit()}ed function from the $ \mathcal{U}_k $ and an initial condition $ \psi_{\mathrm{init}} = \psi(t_0) $.
 
 
 	\subsection{Compilation of integrator}
-		The \emph{spinsim} integrator is constructed and compiled just in time, using \texttt{numba.cuda.jit()}.
-		The particular device functions used are not predetermined, but are instead chosen based on user input to decide a closure.
-		This structure has multiple advantages.
-		First, the field function $ \omega $ is provided by the user as a plain python function (that must be \texttt{numba.cuda.jit()} compatible).
-		This allows users to define $ \omega $ in a way that compiles and executes fast, does not put many restrictions on the form of the function, and returns the accurate results of analytic functions (compared to the errors seen in interpolation).
-		Compiling the simulator also allows the user to set meta parameters, and choose the features they want to use, in a way that does not require experience with the \texttt{numba.cuda} library.
-		This was especially useful for running benchmarks comparing old integration methods to the new ones, like CF4.
-		The default settings should be optimal for most users, although tuning the values of \emph{Cuda} meta parameters \texttt{max\_registers} and \texttt{threads\_per\_block} could improve performance for different GPUs.
-		Third, just in time compilation also allows the user to select a target device other than \emph{Cuda} for compilation, so the simulator can run, using the same algorithm, on a multicore CPU in parallel instead of a GPU, if the user so chooses.
+		The \emph{spinsim} integrator is constructed and compiled just in time, using the \emph{Numba}\cite{lam_numba_2015} python package.
+		This is achieved via the \texttt{numba.cuda.jit()} decorator, which compiles python functions into \emph{Nvidia Cuda}\cite{nickolls_scalable_2008} kernels using an LLVM\cite{lattner_llvm_2004} (Low Level Virtual Machine) compiler.
+		The particular device functions used are not predetermined, but are instead chosen based on user input to decide on a closure.
+		This technique has multiple advantages.
+		First, the field functions $ \omega_j(t) $ are provided by the user as a plain python method.
+		Note that this method must be \texttt{numba.cuda.jit()} compatible.
+		This allows users to define $ \omega_j(t) $ in a way that compiles and executes fast, does not put many restrictions on the form of the function, and returns the accurate results of analytic functions (compared to the errors seen in interpolation).
+		Compiling the simulator also allows the user to set meta-parameters, and choose the features they want to use in a way that does not require experience with the \texttt{numba.cuda} library.
+		This was especially useful for running benchmarks comparing integration methods from previous versions of the software to the current one, CF4.
+		The default settings should be optimal for most users, although tuning the values of \emph{Cuda} meta-parameters \texttt{max\_registers} and \texttt{threads\_per\_block} could improve performance for different GPUs.
+		Third, just in time compilation also allows the user to select a target device other than \emph{Cuda} for compilation, so the simulator can run, using the same algorithm, on a multicore CPU in parallel instead of a GPU.
+		In particular, this allows for compatibility with products running \emph{Apple}'s \emph{MacOS}, which are incompatible with \emph{Cuda} devices.
 		
 		This functionality is interfaced through an object of class \texttt{spinsim.Simulator}.
-		The \emph{Cuda} kernel is defined as per the user’s instructions on construction of the instance, and it is used by calling the method \texttt{spinsim.Simulator.evaluate()}, which returns a results object including the time, state, time-evolution operator, and expected spin projection.
+		The \emph{Cuda} kernel is defined as per the user’s instructions on construction of the instance, and it is used by calling the method \texttt{spinsim.Simulator.evaluate()}.
+		Users are returned an instance of \texttt{spinsim.Results} including the time, state, time-evolution operator, and expected spin projection.
 		Note that the expected spin projection is calculated as a lazy parameter if needed, rather than returned by the simulator object.
 
-		\emph{spinsim} is designed so that a single simulator compilation can be used to execute many simulations, sweeping through a particular parameter, while not needing to be recompiled.
-		This is done through the \texttt{sweep\_parameter} argument to the user-provided field function $ \omega $.
-		The user uses \texttt{sweep\_parameter} to determine a variable parameter for the Hamiltonian.
-		After compiling the \texttt{spinsim.Simulator} object, the user can set the value for \texttt{sweep\_parameter} for a particular simulation as the first argument when calling the function \texttt{spinsim.Simulator.evaluate()}.
-		For a use case example, one might want to simulate many spin systems at different locations in a magnetic field gradient in an MRI experiment.
-		To do this they could choose to set $ \omega_z =\texttt{sweep\_parameter} $, which would vary the magnetic field bias in the $ \omega $ direction for each experiment.
+		The \emph{spinsim} package is designed so that a single simulator instance can be used to execute many simulations, sweeping through parameters while not needing to be recompiled.
+		This is done through the \texttt{sweep\_parameters[]} argument to the user-provided field functions $ \omega_j(t) $.
+		% The user can set \texttt{sweep\_parameters[]} to determine parameter for the Hamiltonian.
+		First the user must instantiate a \texttt{spinsim.Simulator} object.
+		They can then set the value for \texttt{sweep\_parameters[]} for a particular simulation each time \texttt{spinsim.Simulator.evaluate()} is called.
+		As \texttt{sweep\_parameters[]} is a \texttt{numpy.ndarray}\cite{harris_array_2020}, one can use this functionality to sweep many parameters using the same simulator object.
+		For a use-case example, an MRI experimenter might want to simulate many spin systems at different locations $ (x, y) $, in a magnetic field gradient $ \omega_z(t) = x - 2 y $.
+		To do this they could choose to set \texttt{sweep\_parameters = [x, y]}, and define \texttt{field\_sample[2] = sweep\_parameters[0] - 2*sweep\_parameters[1]}.
 		This feature is demonstrated with examples in the documentation.
 
 \section{Quality control}
 	\subsection{Evaluation of accuracy}
-		All accuracy benchmarks were run in \emph{Cuda} mode, on the desktop computer with the \emph{Ryzen 7 5800X} and \emph{GeForce RTX 3080}, which from the tests in Figure \ref{fig:benchmark_device_aggregate} are the fastest CPU and GPU from the devices tested.
+		All accuracy benchmarks were run in \emph{Cuda} mode, on the desktop computer with the \emph{Ryzen 7 5800X} and \emph{GeForce RTX 3080}, which from Figure \ref{fig:benchmark_device_aggregate} are the fastest CPU and GPU from the devices tested.
 		Note that these benchmarks do not take into account the amount of time required to JIT compile simulation code for the first time (order of seconds), as we want to look at this in the limit of running many simulations while sweeping through a parameter that differs in each one.
 		
 		Benchmarks were performed using \texttt{neural-sense.sim.benchmark} (where \texttt{neural-sense}\cite{alexander-tritt-monash_alexander-tritt-monashneural-sense_2020} is the quantum sensing package that \emph{spinsim} was written for).
 		This simulation involves continuously driving transitions in the system for 100ms, while exposing it to a short 1ms pulsed signal that the system should be able to sense.
 		We first wanted to test the accuracy of the different integration techniques for various integration time steps.
-		Here we wanted to test the advantages, if any of using a Magnus based integration method.
-		Accuracy was calculated by taking the quantum state simulation evaluations of a typical quantum sensing experiment and finding the Root Mean Squared (RMS) error from a baseline simulation run by \texttt{scipy.integrate.ivp\_solve()} as part of the \emph{SciPy} python package, via
+		Here we wanted to test the advantages of using a Magnus based integration method.
+		Accuracy was calculated by taking the quantum state simulation evaluations of a typical quantum sensing experiment and finding the root mean squared (RMS) error from a baseline simulation run by \texttt{scipy.integrate.ivp\_solve()} as part of the \emph{SciPy} python package, via
 		\begin{align}
 			\epsilon &= \frac{1}{K}\sqrt{\sum_{k = 0}^{K - 1}\sum_{m_j = -j}^j|\psi_{k, (m_j)} - \psi_{k, (m_j)}^{\textrm{baseline}}|^2},\label{eq:error}
 		\end{align}
-
 		where $ j \in \{\frac12, 1\} $ is the spin quantum number of the system.
-
 		This baseline was computed in 2.4 hours (in comparison to order of 10ths of a second these \emph{spinsim} tests were executed in), and was also used for comparisons to other software packages.
-		These are shown in Figures \ref{fig:benchmark_spin_one_step_error}, and \ref{fig:benchmark_spin_half_step_error}.
-		For each of these simulations we measured the time of execution, as although it is more accurate compared to Euler integration, the CF4 method is slower for any fixed integration time step.
-		These are shown in Figures \ref{fig:benchmark_spin_one_execution_error}, and \ref{fig:benchmark_spin_half_execution_error}.
+
+		Error vs time step plots are shown in Figures \ref{fig:benchmark_spin_one_step_error}, and \ref{fig:benchmark_spin_half_step_error}.
+		In order to find how long a simulation method takes to complete for a given accuracy, we also measured the execution time for each of the simulations.
+		These plots are shown in Figures \ref{fig:benchmark_spin_one_execution_error}, and \ref{fig:benchmark_spin_half_execution_error}.
+		The former sets of plots will be of interest to users choosing an appropriate time step for simulations, and the latter for estimating the execution time of such simulations.
 		In all of these comparisons, errors above $ 10^{-3} $ were counted as a failed simulation, as the maximum possible error for a quantum state saturates given that it is a point on a unit complex sphere.
-		Additionally, errors bellow $ 10^{-11} $ were excluded, as this was the order of magnitude of the errors in the reference simulation.
+		Errors bellow $ 10^{-11} $ were also excluded, as this was the order of magnitude of the errors in the reference simulation.
 
 		The integration techniques tested were the Magnus based CF4, as well as two Euler based sampling methods.
-		A midpoint Euler method was chosen as the simplest (and fastest for a given integration time step)  possible sampling method, whereas a Heun Euler sampling method was used as a comparison to previous versions of this code.
+		A midpoint Euler method was chosen as the simplest (and fastest for a given integration time step) possible sampling method, whereas a Heun Euler sampling method was used as a comparison to previous versions of this code.
 		We benchmarked these methods both while using and not using the rotating frame option.
 		This was done separately for spin-one and spin-half systems, to ensure they both yield accurate results.
 
 		From Figures \ref{fig:benchmark_spin_one} and \ref{fig:benchmark_spin_half}, we find that overall, the results that \emph{spinsim} gives are accurate to those of \emph{SciPy}.
 		Figures \ref{fig:benchmark_spin_one_step_error}, and \ref{fig:benchmark_spin_half_step_error} show that using the Magnus based integration method is up to 3 orders of magnitude more accurate when compared the Euler based methods.
 		Also, using the rotating frame increased the accuracy here by 4 orders of magnitude for any individual integration method.
-		From Figures \ref{fig:benchmark_spin_one_execution_error}, and \ref{fig:benchmark_spin_half_execution_error}, although the Magnus based method is slower than the midpoint Euler based method, it makes up for this in terms of its accuracy.
-		Thus, by default \emph{spinsim} sets the integrator to CF4, and uses the rotating frame.
-		These can be modified using optional arguments when instantiating the \texttt{spinsim.Simulator} object.
+		When comparing speed vs accuracy in Figures \ref{fig:benchmark_spin_one_execution_error}, and \ref{fig:benchmark_spin_half_execution_error}, the advantage that CF4 gives in terms of accuracy far outweighs its slower execution speed when compared to midpoint Euler methods.
+		% By default \emph{spinsim} sets the integrator to CF4, and uses the rotating frame.
+		% These can be modified using optional arguments when instantiating the \texttt{spinsim.Simulator} object.
 		\begin{figure}[h!]
 			\begin{subfigure}[b]{0.475\textwidth}
 				\includegraphics[scale=0.475]{benchmark_spin_one_step_error.pdf}
@@ -693,7 +710,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		\end{figure}
 
 	\subsection{Comparison to alternatives}
-		We ran the same error (using Equation \eqref{eq:error}) and execution time benchmarks on some alternative packages to compare \emph{spinsim}'s performance to theirs.
+		Using Equation \eqref{eq:error}, we ran the same error and execution time benchmarks on some alternative packages to compare \emph{spinsim}'s performance to theirs.
 		The packages compared were are listed in Table \ref{tab:external}.
 		\begin{table}[h!]
 			\caption{The software packages used for and verification of \emph{spinsim}.}
@@ -715,20 +732,20 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 				This was chosen as a comparison to a generic solver from within the python ecosystem.
 			\end{tabular}
 		\end{table}
-
-		In each case, the step sizes of the alternative integrators were limited to a maximum value to obtain simulation results of different accuracies, and the maximum number of steps were modified in some cases to allow more steps to take place.
+		In each case, the step sizes of the alternative integrators were limited to a maximum value to obtain simulation results of different accuracies, and the maximum number of steps were modified in some cases to allow a larger number of steps to take place.
 		Apart from that, the integrator settings were left untouched from the default values, as a representation of what a user would experience using a generic solver for spin system problems.
 
-		Similarly to with the internal \emph{spinsim} benchmarks, the expected spin projection was evaluated in each case, but the states were compared to calculate a relative error.
+		Similarly to with the internal \emph{spinsim} benchmarks, the expected spin projection was evaluated in each case, but only the states were compared to calculate a relative error.
 		Again, we used the longest running \emph{SciPy} simulation as a ground truth for comparison, as the accuracy of \emph{Mathematica} plateaus at small time steps.
-		Functions used for sampling were compiled in both \emph{spinsim} and \emph{QuTip}, and the time taken to complete a simulation was measured in both cases for a second simulation using the already compiled functions.
+		Functions used for sampling were compiled to \emph{LLVM} and \emph{cython} in \emph{spinsim} and \emph{QuTip} respectively.
+		in both cases, the time taken to complete a simulation was measured using a second simulation using the already compiled functions, to represent the use-case of sweeping through many simulations.
 
-		Each benchmark was run one simulation at a time.
-		However, it might be possible to increase the average speed of many benchmarks from \emph{Mathematica} and \emph{SciPy} packages using multithreading to run multiple benchmarks at a time.
+		The speed of only one simulation was measured for each benchmark.
+		However, it might be possible to increase the average speed of many benchmarks from \emph{Mathematica} and \emph{SciPy} packages by using multithreading to run multiple simulations at a time.
 		When this was attempted using \emph{Mathematica}, the kernels crashed as the 32GiB of RAM was not enough to run them all at once.
-		Multithreading was also not attempted using \emph{SciPy}, due to the fact that running the full set of benchmarks of only a single simulation per integration time step consumes a day of computational time.
-		But to be fair, both \emph{Mathematica} and \emph{SciPy} results are plotted with an artificial reduction in execution time by a factor of 8, which is an upper bound for the speed increase that could be obtained by running them parallel on an 8 core processor, which appears as dotted lines.
-		Results from \emph{spinsim} and \emph{QuTip} automatically run multithreaded, so this handicap is not plotted for these packages.
+		Multithreading was not attempted using \emph{SciPy}, due to the fact that running the full set of benchmarks of only a single simulation per integration time step already consumes over 11 hours of computational time.
+		Regardless, for a fair comparison, both \emph{Mathematica} and \emph{SciPy} results are plotted with an artificial reduction in execution time by a factor of 8, which is an upper bound for the speed increase that could be obtained by running them parallel on an 8 core processor, which appears as dotted lines.
+		Simulations from \emph{spinsim} and \emph{QuTip} automatically run multithreaded, so this handicap is not plotted for these packages.
 
 		From Figure \ref{fig:benchmark_external}, for any given error tolerance, \emph{spinsim} is over 3 orders of magnitude faster than \emph{Mathematica} and \emph{QuTip}, and 4 orders of magnitude more accurate than \emph{SciPy}.
 		In practice, this means that a 25 minute \emph{SciPy} simulation is reduced to 50ms, and a three week long \emph{SciPy} batch simulation of 1000 separate systems (a realistic requirement for testing quantum sensing protocols) would take less than one minute in \emph{spinsim}.
@@ -746,7 +763,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 	\subsection{Parallelisation performance}
 		Once the algorithm behind \emph{spinsim} was developed, we wanted to check its execution speed while running on various devices.
 		The main reason for this test was to quantify the speed increase of parallelisation by comparing execution speeds on highly parallel devices (being GPUs), compared highly procedural devices (being CPUs).
-		Speed benchmarks were performed using \texttt{sense.sim.benchmark}, by comparing evaluation speed of typical spin-one sensing experiments on different devices.
+		Speed benchmarks were performed using \texttt{neural-sense.sim.benchmark}, by comparing evaluation speed of typical spin-one sensing experiments on different devices.
 		This is shown in Figure \ref{fig:benchmark_device_aggregate}.
 		The integration code was compiled by \texttt{numba} for multicore CPUs, CPUs running single threaded, and \emph{Nvidia Cuda} compatible GPUs, and run on different models of each of them.
 		These test devices are given in Table \ref{tab:devices}.
@@ -794,16 +811,16 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		However, there is still a large improvement from using the high end \emph{GeForce RTX 3070} to the \emph{GeForce RTX 3080}, with the latter simulating the experiment almost twice as fast as it would take to run the simulated experiment in the real world.
 
 		Surprisingly, we found that the \emph{Ryzen 7 5800X} 8 core CPU was able to execute the benchmark faster than the \emph{Ryzen 9 5900X} 12 core CPU.
-		This can be explained by the fact that the \emph{Ryzen 7 5800X} was liquid cooled, rather than being air cooled, meaning it was likely able to boost to a higher core clock, and resist thermal throttling.
+		This can be explained by the fact that the \emph{Ryzen 7 5800X} was cooled by liquid rather than air, meaning it was likely able to boost to a higher core clock, and resist thermal throttling.
 
 		Figure \ref{fig:benchmark_device_aggregate} can be used by potential \emph{spinsim} users for finding the relative performance for devices of varying abilities of parallelisation.
-		We would recommend Another factor not shown in the plot is the fact that, in practice, running highly code parallel code on a CPU on a personal computer will severely limit the responsiveness of other applications, as it can utilise the entire CPU (as it should).
+		Another factor not shown in the plot is the fact that, in practice, running highly code parallel code on a CPU on a personal computer will severely limit the responsiveness of other applications, as it can utilise the entire CPU (as it should).
 		In contrast, this does not happen when running a GPU based program, as it requires very little CPU utilisation to function.
 		This can be convenient when running simulations on a personal laptop or desktop, as other work on the computer does not have to halt while simulations are being run.
 
 	\subsection{Testing}
 		During the accuracy tests, it was confirmed that all possible modes of \emph{spinsim} agree with a standard \emph{SciPy} simulation up to an arbitrarily small error.
-		The Lie Trotter matrix exponentiator was tested separately from the full system, as well as benchmarked separately.
+		The Lie Trotter matrix exponentiator was tested separately from the full system, as well as benchmarked separately against \texttt{scipy.linalg.expm()} from \emph{SciPy}.
 		These tests and benchmarks were run as part of the \texttt{neural\_sense} package.
 		The simulator has also been used as part of the measurement protocol being developed there, and it has been tested as part of those algorithms as well.
 
@@ -913,7 +930,7 @@ English.
 		There are many atomic nuclei with spins of half (eg protons, Carbon 13) and, and fewer that have spins of one (eg Lithium 6, Nitrogen 14)\cite{fuller_nuclear_1976}, which, if relaxation and interactions between systems are not important for the application, \emph{spinsim} could be used to simulate for spectroscopy experiments, for example.
 		The inclusion of a quadrupole operator means that, with the same level of simplifications, \emph{spinsim} should be able to simulate Nuclear Quadrupole Resonance (NQR) spectroscopy for spin-one nuclei\cite{bain_nqr_2004}, such as Nitrogen 14, provided a suitable coordinate system is chosen.
 		This technique measures energy level differences between levels split by electric field gradients, rather than static magnetic bias fields.
-		Another possible use case could be for Magnetic Resonance Imaging (MRI) simulation and pulse sequence design.
+		Another possible use-case could be for Magnetic Resonance Imaging (MRI) simulation and pulse sequence design.
 		MRI uses measures the response of spins of an array of spin-half protons to a spatially varying pulse sequence\cite{mckinnon_physics_1998}, which essentially just corresponds to many separate \emph{spinsim} simulations of spins at different positions in space.
 		While this package offers some advantages over state of the art simulators in the field\cite{kose_fast_2019}, with its use of quantum mechanics over classical mechanics, and its absence of rotating wave approximations, its parametrised pulse sequence definitions and geometric integrator, again, the lack of interacting particles and decoherence features are may limit its use in this area.
 
@@ -927,7 +944,7 @@ English.
 
 \section{Acknowledgements}
 
-Thank you to the Monash University School of Physics and Astronomy spinor BEC lab group, particularly Hamish Taylor and Travis Hartley, who have started using \emph{spinsim} for their own projects and have given useful feedback of their user experience with the package.
+Thank you to the Monash University School of Physics and Astronomy spinor BEC lab group. In particular, Hamish Taylor, Travis Hartley and Chris Bounds, who have started using \emph{spinsim} for their own projects and have given useful feedback of their user experience with the package.
 
 \section{Funding statement}
 
