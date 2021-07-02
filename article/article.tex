@@ -476,7 +476,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		For the most benefit out of GPU parallelisation, users should choose $ \mathrm{D}t $ so that the number of time samples $ K $ is at least as large as the number of GPU cores available for \emph{spinsim}.
 		Users should also make sure that $ \mathrm{D}t $ represents a large enough sample rate for the state $ \psi_k $ or expected spin projection $ \langle \overrightarrow{J}\rangle_k $ to be used in their further analysis.
 		Finally, if $ K $ is too large, then the GPU will run out of memory on compilation, which will raise an exception. % (which we found to be $ K = 3\cdot 10^8 $ sample points for the 10GiB \emph{GeForce RTX 3080}).
-		We found that a the 10GiB \emph{GeForce RTX 3080} could run at full memory capacity with 300 million sample points for spin-one mode and 600 million sample points for spin-half.
+		We found that a the 10GiB \emph{GeForce RTX 3080} could run at full memory capacity with 60 million sample points for spin-one mode and 120 million sample points for spin-half.
 		% Comment on number of samples for cores or whatever physics is being done
 		% Introduce K if it turns out I use it later
 

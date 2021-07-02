@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "spinsim"
-version = "0.4.2"
+version = "0.4.3"
 description = "A package for simulating spin half and spin one quantum systems quickly and accurately using cuda parallelisation."
 license = "BSD-3-Clause"
 authors = ["Alexander Tritt <alexander.tritt@monash.edu>"]
