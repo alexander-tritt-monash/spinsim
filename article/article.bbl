@@ -7,6 +7,11 @@ Degen CL, Reinhard F, Cappellaro P.
 \newblock Available from:
   \url{https://link.aps.org/doi/10.1103/RevModPhys.89.035002}.
 
+\bibitem{j_j_sakurai_jun_john_modern_2011}
+{J J Sakurai (Jun John)}.
+\newblock Modern quantum mechanics.
+\newblock 2nd ed. Boston: Addison-Wesley; 2011.
+
 \bibitem{gell-mann_symmetries_1962}
 Gell-Mann M.
 \newblock Symmetries of {Baryons} and {Mesons}.
@@ -130,11 +135,6 @@ Hewlett-Packard. {HP} {48G} {Series} {Advanced} {User}'s {Reference} {Manual}.
   Eric Rechlin; 1994.
 \newblock Available from: \url{https://www.hpcalc.org/details/6036}.
 
-\bibitem{j_j_sakurai_jun_john_modern_1994}
-{J J Sakurai (Jun John)}.
-\newblock Modern quantum mechanics.
-\newblock Rev. ed. ed. Reading, Mass.: Addison-Wesley PubCo; 1994.
-
 \bibitem{lam_numba_2015}
 Lam SK, Pitrou A, Seibert S.
 \newblock Numba: a {LLVM}-based {Python} {JIT} compiler.
@@ -171,6 +171,11 @@ alexander-tritt monash. alexander-tritt-monash/neural-sense; 2020.
 \newblock Original-date: 2020-10-06T00:58:21Z.
 \newblock Available from:
   \url{https://github.com/alexander-tritt-monash/neural-sense}.
+
+\bibitem{suli_introduction_2003}
+Süli E, Mayers DF.
+\newblock An {Introduction} to {Numerical} {Analysis}.
+\newblock Cambridge: University Press; 2003.
 
 \bibitem{johansson_qutip_2013}
 Johansson JR, Nation PD, Nori F.
