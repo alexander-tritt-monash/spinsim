@@ -28,7 +28,7 @@ class SpinQuantumNumber(Enum):
         Eigenstates of the spin operators for quick reference.
     """
 
-    def __init__(self, value, dimension, label):
+    def __init__(self, value:float, dimension:int, label:str):
         super().__init__()
         self._value_ = value
         self.dimension = dimension
@@ -103,7 +103,7 @@ class ExponentiationMethod(Enum):
     index : :obj:`int`
         A reference number, used when compiling the integrator, where higher level objects like enums cannot be interpreted.
     """
-    def __init__(self, value, index):
+    def __init__(self, value:str, index:int):
         super().__init__()
         self._value_ = value
         self.index = index
@@ -136,7 +136,7 @@ class Device(Enum):
     .. _Supported Numpy features: http://numba.pydata.org/numba-doc/latest/reference/numpysupported.html
     .. _Supported CUDA Python features: http://numba.pydata.org/numba-doc/latest/cuda/cudapysupported.html
     """
-    def __init__(self, value, index):
+    def __init__(self, value:"str", index:int):
         super().__init__()
         self._value_ = value
         self.index = index
@@ -296,7 +296,7 @@ class Results:
         
         * **spin** (:obj:`numpy.ndarray` of :obj:`numpy.float64` (time_index, spatial_direction)) - The expected spin projection (Bloch vector) over time.
     """
-    def __init__(self, time, time_evolution, state, spin_calculator):
+    def __init__(self, time:np.ndarray, time_evolution:np.ndarray, state:np.ndarray, spin_calculator:callable):
         """
         Parameters
         ----------
@@ -324,7 +324,7 @@ class Results:
         self.state = state
         self.spin_calculator = spin_calculator
 
-    def __getattr__(self, attr_name):
+    def __getattr__(self, attr_name:str) -> np.ndarray:
         if attr_name == "spin":
             spin = self.spin_calculator(self.state)
             setattr(self, attr_name, spin)
@@ -346,6 +346,8 @@ class Simulator:
         That is, whether the integrator is compiled for a CPU or GPU.
         Defaults to :obj:`Device.CUDA` if the system it is being run on is Nvidia Cuda compatible, and defaults to :obj:`Device.CPU` otherwise.
         See :obj:`Device` for all options and more details.
+    number_of_threads : :obj:`int`
+        The number of CPU threads to use when running on a CPU device.
     get_time_evolution : :obj:`callable`
         The internal function for evaluating the time evolution operator in parallel. Compiled for chosen device on object constrution.
 
@@ -370,7 +372,7 @@ class Simulator:
         
         * **spin** (:obj:`numpy.ndarray` of :obj:`numpy.float64` (time_index, spatial_direction)) - The expected spin projection (Bloch vector) over time.
     """
-    def __init__(self, get_field:callable, spin_quantum_number:SpinQuantumNumber, device:Device = None, exponentiation_method:ExponentiationMethod = None, use_rotating_frame:bool = True, integration_method:IntegrationMethod = IntegrationMethod.MAGNUS_CF4, number_of_squares:int = 24, threads_per_block:int = 64, max_registers:int = None):
+    def __init__(self, get_field:callable, spin_quantum_number:SpinQuantumNumber, device:Device = None, exponentiation_method:ExponentiationMethod = None, use_rotating_frame:bool = True, integration_method:IntegrationMethod = IntegrationMethod.MAGNUS_CF4, number_of_squares:int = 24, threads_per_block:int = 64, max_registers:int = None, number_of_threads:int = None):
         """
         .. _Achieved Occupancy: https://docs.nvidia.com/gameworks/content/developertools/desktop/analysis/report/cudaexperiments/kernellevel/achievedoccupancy.htm
 
@@ -427,6 +429,8 @@ class Simulator:
             Lowering the value increases GPU occupancy, meaning more threads run concurrently, at the expense of fewer resgiters being avaliable to each thread, meaning slower memory must be used.
             Thus, there will be an optimal value of `max_registers` for each model of GPU running :mod:`spinsim`, balancing more threads vs faster running threads, and changing this value could increase performance for your GPU.
             See `Achieved Occupancy`_ for Nvidia's official explanation.
+        number_of_threads : :obj:`int`
+            The number of CPU threads to use when running on a CPU device.
         """
         if not device:
             if cuda.is_available():
@@ -437,6 +441,7 @@ class Simulator:
         self.threads_per_block = threads_per_block
         self.spin_quantum_number = spin_quantum_number
         self.device = device
+        self.number_of_threads = number_of_threads
 
         self.get_time_evolution = None
         try:
@@ -911,7 +916,7 @@ class Simulator:
         self.get_time_evolution = get_time_evolution
         self.spin_calculator = spin_calculator
 
-    def evaluate(self, time_start, time_end, time_step_integration, time_step_output, state_init, sweep_parameters = np.empty(0)):
+    def evaluate(self, time_start:float, time_end:float, time_step_integration:float, time_step_output:float, state_init:np.ndarray, sweep_parameters:np.ndarray = np.empty(0)) -> Results:
         """
         Integrates the time dependent Schroedinger equation and returns the quantum state of the spin system over time.
 
@@ -950,14 +955,22 @@ class Simulator:
 
         time_end_points = np.asarray([time_start, time_end], np.float64)
         state_init = np.asarray(state_init, np.complex128)
-        sweep_parameters = np.asarray(sweep_parameters, np.complex128)
+        sweep_parameters = np.asarray(sweep_parameters, np.float64)
 
         time_index_max = int((time_end_points[1] - time_end_points[0])/time_step_output)
         if self.device.index == 0:
+            if self.device == Device.CPU:
+                if self.number_of_threads:
+                    old_threads = nb.get_num_threads()
+                    nb.set_num_threads(self.number_of_threads)
             time = np.empty(time_index_max, np.float64)
             time_evolution_output = np.empty((time_index_max, self.spin_quantum_number.dimension, self.spin_quantum_number.dimension), np.complex128)
 
             self.get_time_evolution(sweep_parameters, time, time_end_points, time_step_integration, time_step_output, time_evolution_output)
+
+            if self.device == Device.CPU:
+                if self.number_of_threads:
+                    nb.set_num_threads(old_threads)
 
         elif self.device == Device.CUDA:
             try:
@@ -999,7 +1012,7 @@ class Simulator:
 
     @staticmethod
     @nb.njit
-    def get_state(state_init, state, time_evolution):
+    def get_state(state_init:np.ndarray, state:np.ndarray, time_evolution:np.ndarray):
         """
         Use the stepwise time evolution operators in succession to find the quantum state timeseries of the 3 level atom.
 
@@ -1430,7 +1443,7 @@ class Utilities:
         * **result** (:class:`numpy.ndarray` of :class:`numpy.complex128`, (y_index, x_index)) - The matrix which the result of the exponentiation is to be written to.
         * **number_of_squares** (:obj:`int`) - The number of squares to make to the approximate matrix (:math:`\\tau` above).
     """
-    def __init__(self, spin_quantum_number, device, threads_per_block, number_of_squares):
+    def __init__(self, spin_quantum_number:SpinQuantumNumber, device:Device, threads_per_block:int, number_of_squares:int):
         """
         Parameters
         ----------
