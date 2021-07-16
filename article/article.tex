@@ -665,7 +665,13 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		Note that these benchmarks do not take into account the amount of time required to JIT compile simulation code for the first time (order of seconds), as we want to look at this in the limit of running many simulations while sweeping through a parameter that differs in each one.
 		
 		Benchmarks were performed using \texttt{neural-sense.sim.benchmark} (where \texttt{neural-sense}~\cite{alexander-tritt-monash_alexander-tritt-monashneural-sense_2020} is the quantum sensing package that \emph{Spinsim} was written for).
-		This simulation involves continuously driving transitions in the system for $ 100\,\mathrm{ms} $, while exposing it to a short 1ms pulsed signal that the system should be able to sense.
+		This simulation involves continuously driving transitions in the system for $ 100\,\mathrm{ms} $, while exposing it to a $ 1\,\mathrm{ms} $ pulsed signal that the system should be able to sense.
+		The system has the hamiltonian
+		\begin{align}
+			H(t) = \omega J_z + 2\Omega\cos(\omega t)J_x + \Omega_p p_\Omega(t - t_p) J_z,\label{eq:neural_pulse}
+		\end{align}
+		where $ \omega = 2\pi\cdot700\,\mathrm{kHz} $, $ \Omega = 2\pi\cdot1\,\mathrm{kHz} $,$ \Omega_p = 2\pi\cdot70\,\mathrm{Hz} $, $ t_p = 233\,\mathrm{ms} $ and $ p_\Omega(t) $ is a single cycle of a sine wave wth frequency $ \Omega $.
+
 		We first wanted to test the accuracy of the different integration techniques for various integration time-steps.
 		Here we wanted to test the advantages of using a Magnus-based integration method.
 		Accuracy was calculated by taking the quantum state simulation evaluations of a typical quantum sensing experiment and finding the root mean squared (RMS) error from a baseline simulation run by \texttt{scipy.integrate.ivp\_solve()} as part of the \emph{SciPy} python package, via
@@ -725,6 +731,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 			\caption{Speed and accuracy of the spin-one and spin-half options of \emph{Spinsim}.
 			A simulation of a typical neural sensing experiment was run for every integration time-step, for each of the possible integration techniques (Magnus-based commutator free 4, and two Euler methods).
 			In the simulation, transitions are continuously driven in the spin system for a duration of 100ms, and an additional small signal is injected for 1ms.
+			See Equation~\eqref{eq:neural_pulse}.
 			Each technique was tested while both using and not using a transformation into a rotating frame.
 			Both execution time and error were recorded for each of the simulations.
 			Error is RMS error compared to a long running \emph{SciPy} baseline.}
@@ -800,6 +807,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 			\caption{Speed vs accuracy of two alternative integration packages.
 			A simulation of a typical neural sensing experiment was run for every integration time-step, for each of alternative packages (\texttt{qutip.sesolve()} from \emph{QuTip}, \texttt{NDSolve()} from \emph{Mathematica}, and \texttt{scipy.integrate.ivp\_solve()} from \emph{SciPy}).
 			In the simulation, transitions are continuously driven in the spin system for a duration of 100ms, and an additional small signal is injected for 1ms.
+			See Equation~\eqref{eq:neural_pulse}.
 			Both execution time and error were recorded for each of the simulations.
 			Error is RMS error compared to a long running \emph{SciPy} baseline.
 			The \emph{Mathematica} and \emph{SciPy} results are also shown with a speed up by a factor of 8 to represent the upper bound of hypothetical parallelisation across an 8 core CPU.}
@@ -844,6 +852,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 			\caption{Evaluation speed of a simulation of a typical spin-one sensing experiment on both CPUs and GPUs.
 			Integration time-step is set to 100ns.
 			Transitions are continuously driven in the spin system for a duration of 100ms, and an additional small signal is injected for 1ms.
+			See Equation~\eqref{eq:neural_pulse}.
 			Evaluation time is determined by an average of 100 similar simulations for each device, where each individual simulation varies in dressing amplitude (transition frequency).}
 			\label{fig:benchmark_device_aggregate}
 		\end{figure}
