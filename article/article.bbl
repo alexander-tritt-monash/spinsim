@@ -185,6 +185,13 @@ Johansson JR, Nation PD, Nori F.
 \newblock Available from:
   \url{http://www.sciencedirect.com/science/article/pii/S0010465512003955}.
 
+\bibitem{groszkowski_scqubits_2021}
+Groszkowski P, Koch J.
+\newblock Scqubits: a {Python} package for superconducting qubits.
+\newblock arXiv:210708552 [quant-ph]. 2021 Jul.
+\newblock ArXiv: 2107.08552.
+\newblock Available from: \url{http://arxiv.org/abs/2107.08552}.
+
 \bibitem{wolfram_research_inc_mathematica_2020}
 Wolfram~Research I. Mathematica. Champaign, Illinois: Wolfram Research, Inc.;
   2020.
