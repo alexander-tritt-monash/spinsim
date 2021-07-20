@@ -500,7 +500,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		Beyond discretisation for parallelisation, we discretize our time-evolution operator into individual integration time-steps.
 		Each of the $ \mathcal{U}_k $ is further split into products $ u^k_{L-1} \cdots u^k_0 $ of $ L $ time-evolution operators, now separated by the integration time-step $ \mathrm{d}t = \mathrm{D}t/L $.
 		
-		To choose an appropriate value of $ \mathrm{d}t $, users can use the accuracy plots in Figures~\ref{fig:benchmark_spin_one_step_error} and~\ref{fig:benchmark_spin_half_step_error} in Section~\nameref{sec:accuracy}. % \note{How do I reference a section if they don't have number labels in the finished article? Should I?}
+		To choose an appropriate value of $ \mathrm{d}t $, users can refer to the accuracy plots in Figures~\ref{fig:benchmark_spin_one_step_error} and~\ref{fig:benchmark_spin_half_step_error} under \emph{\nameref{sec:accuracy}}. % \note{How do I reference a section if they don't have number labels in the finished article? Should I?}
 		To choose an appropriate value of $ \mathrm{D}t $, users must consider three factors.
 		For the most benefit out of GPU parallelisation, users should choose $ \mathrm{D}t $ so that the number of time samples $ K $ is at least as large as the number of GPU cores available for \emph{Spinsim}.
 		Users should also make sure that $ \mathrm{D}t $ represents a large enough sample rate for the state $ \psi_k $ or expected spin projection $ \langle \overrightarrow{J}\rangle_k $ to be used in their further analysis.
@@ -611,7 +611,14 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		\begin{figure}[h!]
 			\centering
 			\includegraphics[scale=0.475]{architecture.png}
-			\caption{The structure of \emph{Spinsim}}
+			\caption{
+				The mathematical and computational breakdown of \emph{Spinsim}.
+				The procedural problem of evaluating the state time series $ \psi_k $ is broken into the parallel problem of evaluating time-evolution operators $ \mathcal{U}_k $.
+				Each of the $ \mathcal{U}_k $ are found independently on a separate GPU thread.
+				The problem is brought into a dynamic rotating frame to increase numerical accuracy.
+				The $ U_k $ are broken further into time-stepping operators $ u_k $, each of which are evaluated using the Magnus CF4 method.
+				Matrix exponentials are evaluated using a Lie-Trotter based method, including a residual squaring technique to avoid over-squaring.
+			}
 			\label{fig:architecture}
 		\end{figure}
 		A visual summary of the structure of \emph{Spinsim} is shown in Figure~\ref{fig:architecture}.
@@ -787,7 +794,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		% In each case, the step sizes of the alternative integrators were limited to a maximum value 
 		Apart from that, the integrator settings were left untouched from the default values, as a representation of what a user would experience using a generic solver for spin system problems.
 
-		Similarly to the internal \emph{Spinsim} benchmarks (see Section~\nameref{sec:accuracy}), the expected spin projection was evaluated in each case, but only the states were compared to calculate a relative error via Equation~\eqref{eq:error}.
+		Similarly to the internal \emph{Spinsim} benchmarks (see \emph{\nameref{sec:accuracy}}), the expected spin projection was evaluated in each case, but only the states were compared to calculate a relative error via Equation~\eqref{eq:error}.
 		Again, we used the longest running \emph{SciPy} simulation as a baseline for comparison, as the accuracy of \emph{Mathematica} plateaus at small time-steps.
 		Functions used for sampling were compiled to \emph{LLVM} and \emph{cython} in \emph{Spinsim} and \emph{QuTip} respectively.
 		in both cases, the time taken to complete a simulation was measured using a second simulation using the already compiled functions, to represent the use-case of sweeping through many simulations.
