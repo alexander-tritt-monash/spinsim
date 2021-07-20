@@ -617,7 +617,7 @@ class Simulator:
                 return
             transform_frame = transform_frame_lab
 
-        get_field_jit = jit_device(get_field)
+        get_field_jit = jit_device_template("(float64, float64[:], float64[:])")(get_field)
 
         if integration_method == IntegrationMethod.MAGNUS_CF4:
             @jit_device_template("(float64[:], float64, float64, float64, float64[:, :], float64, complex128[:])")
@@ -948,9 +948,9 @@ class Simulator:
         results : :obj:`Results`
             An object containing the results of the simulation.
         """
-        if math.fabs(time_step_output/time_step_integration - round(time_step_output/time_step_integration)) > 1e-6:
-            time_step_integration_old = time_step_integration
-            time_step_integration = time_step_output/round(max(time_step_output/time_step_integration, 1))
+        time_step_integration_old = time_step_integration
+        time_step_integration = time_step_output/round(max(time_step_output/time_step_integration, 1))
+        if math.fabs(time_step_output/time_step_integration_old - round(time_step_output/time_step_integration_old)) > 1e-6:
             print(f"\033[33mspinsim warning!!!\ntime_step_output ({time_step_output:8.4e}) not an integer multiple of time_step_integration ({time_step_integration_old:8.4e}). Resetting time_step_integration to {time_step_integration:8.4e}.\033[0m\n")
 
         time_end_points = np.asarray([time_start, time_end], np.float64)
@@ -1474,7 +1474,6 @@ class Utilities:
         if number_of_hypercubes < 0:
             number_of_hypercubes = 0
         trotter_precision = 4**number_of_hypercubes
-        # print(type(trotter_precision), trotter_precision)
 
         @jit_device
         def conj(z):
