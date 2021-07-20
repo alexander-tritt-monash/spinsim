@@ -663,7 +663,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		They can then set the value for \texttt{sweep\_parameters[]} for a particular simulation each time \texttt{spinsim.Simulator.evaluate()} is called.
 		As \texttt{sweep\_parameters[]} is a \texttt{numpy.ndarray}\cite{harris_array_2020}, one can use this functionality to sweep many parameters using the same simulator object.
 		For a use-case example, an MRI experimenter might want to simulate many spin systems at different locations $ (x, y) $, in a magnetic field gradient $ \omega_z(t) = x - 2 y $.
-		To do this they could choose to set \texttt{sweep\_parameters = [x, y]},\linebreak and define \texttt{field\_sample[2] = sweep\_parameters[0] - 2*sweep\_parameters[1]}.
+		To do this they could choose to set \texttt{sweep\_parameters = [x, y]}, and define \texttt{field\_sample[2] = sweep\_parameters[0] - 2*sweep\_parameters[1]}.% \linebreak
 		This feature is demonstrated with examples in the documentation.
 
 \section{Quality control}
