@@ -50,6 +50,7 @@ Spinsim: a GPU optimized simulator of spin-half and spin-one quantum systems
 	Present address: School of Physics, University of Sydney, NSW 2006, Australia.\\
 	Optimization and extension to spin-one of first version of code.\\
 4. School of Molecular Sciences, La Trobe University, PO box 199, Bendigo, Victoria 3552, Australia.\\
+	Present address: Q-CTRL Pty. Ltd.\\
 	Original conception of first version of code.\\
 5. Department of Electrical and Computer Systems Engineering, Monash University, Victoria 3800, Australia.\\
 	Advice on numerical analysis.\\
@@ -79,15 +80,15 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 	In general, any design of experiments using spin systems could benefit from a fast, accurate method of simulation.
 
 	% \texttt{AtomicPy}\cite{morris_qcmonkatomicpy_2018}
-	In the past, the spinor Bose Einstein condensate (spinor BEC) lab at Monash University used an in-house, \emph{cython} based script, on which this package is based, and standard differential equation solvers (such as \emph{Mathematica}'s function \texttt{NDSolve}) to solve the Schroedinger equation for quantum sensing spin systems.
+	In the past, the spinor Bose Einstein condensate (spinor BEC) lab at Monash University used an in-house, \emph{cython} based script, on which this package is based, and standard differential equation solvers (such as \emph{Mathematica}'s function \texttt{NDSolve}) to solve the Schr\"odinger equation for quantum sensing spin systems.
 	Spin one systems are sometimes approximated to spin-half for a faster execution time, at the cost of modelling all effects of the system.
 	However, these methods are not completely optimized for our use-case, and therefore come with some issues.
 
 	First, while the execution time for these solvers is acceptable for running a small number of experiments, for certain experiments involving large arrays of independent atom clouds (which require many thousands of simulations to be run), this time accumulates to the order of many hours, or even multiple days.
 
-	Second, the Schroedinger equation has the geometric property of being norm persevering.
+	Second, the Schr\"odinger equation has the geometric property of being norm persevering.
 	In other words, the time-evolution operator for a system between two points in time must be unitary.
-	As such, numerical solutions to the Schroedinger equation should also preserve this property.
+	As such, numerical solutions to the Schr\"odinger equation should also preserve this property.
 	For many numerical methods like those in the Runge Kutta family, the approximations used might not be norm preserving, and the evaluated quantum state may diverge towards an infinite norm, or converge to zero if run for many iterations.
 
 	Third, our system (and similar spin systems) can be very oscillatory.
@@ -96,7 +97,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 
 	Given the recent boom in machine learning, many research computers are now equipped with advanced graphics processing units (GPUs).
 	Their many cores, which can range from hundreds to tens of thousands in number, allows them to run some highly parallel algorithms much faster than a central processing unit (CPU).
-	Examples include calculating colours for many pixels on a screen in the titular graphics processing, or the weights in a large neural network.
+	Examples include calculating colors for many pixels on a screen in the titular graphics processing, or the weights in a large neural network.
 	By finding ways to parallelize the problem of solving quantum spin systems, we can use the many cores of a GPU to our advantage in this context as well.
 
 \section{Implementation and architecture}
@@ -124,7 +125,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		% \end{align}
 		
 		% where $ \hbar $ is (reduced) Planck's constant (or equivalently, setting 
-		% $ \hbar = 1 $). In addition, rather than being represented by standard coordinates in $ \mathbb{C}^{N \times N} $, in \emph{Spinsim} the Hamiltonian $ H(t) $ is instead represented with respect to a choice of basis for the corresponding Lie Algebra, $ \mathfrak{su}(N) $. For example, when set to spin-half mode, the \emph{Spinsim} package solves the time dependent Schroedinger equation of the form
+		% $ \hbar = 1 $). In addition, rather than being represented by standard coordinates in $ \mathbb{C}^{N \times N} $, in \emph{Spinsim} the Hamiltonian $ H(t) $ is instead represented with respect to a choice of basis for the corresponding Lie Algebra, $ \mathfrak{su}(N) $. For example, when set to spin-half mode, the \emph{Spinsim} package solves the time dependent Schr\"odinger equation of the form
 
 		Rather than parametrizing the problem in terms of the matrix elements of $ H(t) $, we consider time varying real coefficients in a linear combination of fixed operators,
 		\begin{align}
@@ -198,7 +199,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 		% Call omega, no implementation detail
 		% The fields $ f $ that represents the time dependent Hamiltonian $ H(t) $, are the collection of energy functions $ f_x(t), f_y(t), f_z(t) $, with time $ t $ and $ f $ with physical dimension of frequency that control the dynamics of the system. The user must define a method that returns a sample of these field functions when a sampling time is input. In physical terms, these functions could represent the $ x,y,z $ components of a magnetic field applied to a magnetically spin-one BEC or NVC.
 
-		% Similarly, when \emph{Spinsim} is set to spin-one mode, it can solve the Schroedinger equation of the form
+		% Similarly, when \emph{Spinsim} is set to spin-one mode, it can solve the Schr\"odinger equation of the form
 
 		% \begin{align}
 		% 	\frac{\mathrm{d}}{\mathrm{d}t}\psi(t) = -i 2\pi (f_x(t) J_x + f_y(t) J_y + f_z(t) J_z + f_q(t) Q) \psi(t).
@@ -932,7 +933,8 @@ neuralsense (for benchmark code)
 	Optimization and extension to spin-one of first version of code.\\
 4. Russell P. Anderson\\
 	School of Molecular Sciences, La Trobe University, PO box 199, Bendigo, Victoria 3552, Australia.\\
-	Original conception of first version of code.\\
+	Present address: Q-CTRL Pty. Ltd.\\
+	Original conception of first version of code, with minor contributions to released packages.\\
 5. James Saunderson\\
 	Department of Electrical and Computer Systems Engineering, Monash University, Victoria 3800, Australia.\\
 	Advice on numerical analysis.\\
@@ -1016,7 +1018,9 @@ Thank you to the Monash University School of Physics and Astronomy spinor BEC la
 
 % \textcolor{blue}{If the software resulted from funded research please give the funder and grant number.}
 AT acknowledges support through an Australian Government Research Training Program Scholarship.
-LDT acknowledges funding from the Australian Research Council Linkage Project LP200100082.
+JS is the recipient of an Australian Research Council Discovery Early Career Researcher Award (project number DE210101056) funded by the Australian Government.
+% JS acknowledges funding from the Australian Research Council Discovery Early Career Researcher Award (project number DE210101056) funded by the Australian Government..
+LDT acknowledges funding from the Australian Research Council Linkage Project (project number LP200100082).
 
 \section{Competing interests}
 
