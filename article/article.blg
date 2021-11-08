@@ -9,55 +9,55 @@ Reallocating 'glb_str_ptr' (item size: 4) to 20 items.
 Reallocating 'global_strs' (item size: 1) to 4000000 items.
 Reallocating 'wiz_functions' (item size: 4) to 6000 items.
 Database file #1: spinsim.bib
+Warning--empty author and editor in wolfram_research_inc_mathematica_2020
 Warning--empty author and editor in hewlett-packard_hp_1994
 Warning--empty author and editor in alexander-tritt-monash_alexander-tritt-monashneural-sense_2020
 Warning--missing publisher in alexander-tritt-monash_alexander-tritt-monashneural-sense_2020
-Warning--empty author and editor in wolfram_research_inc_mathematica_2020
 Warning--empty author in noauthor_cuda_2012
 Warning--empty author and editor in noauthor_cuda_2012
 Warning--missing publisher in noauthor_cuda_2012
 Warning--empty author in noauthor_cuda_2013
 Warning--empty author and editor in noauthor_cuda_2013
 Warning--missing publisher in noauthor_cuda_2013
-You've used 35 entries,
-            3177 wiz_defined-function locations,
-            917 strings with 13521 characters,
-and the built_in function-call counts, 56734 in all, are:
-= -- 7126
-> -- 332
-< -- 7
-+ -- 226
-- -- 82
-* -- 4698
-:= -- 6148
-add.period$ -- 162
-call.type$ -- 35
-change.case$ -- 21
-chr.to.int$ -- 6
-cite$ -- 45
-duplicate$ -- 4512
-empty$ -- 5572
-format.name$ -- 104
-if$ -- 13397
+You've used 46 entries,
+            3507 wiz_defined-function locations,
+            1039 strings with 17553 characters,
+and the built_in function-call counts, 96663 in all, are:
+= -- 11136
+> -- 745
+< -- 495
++ -- 389
+- -- 151
+* -- 7648
+:= -- 10385
+add.period$ -- 219
+call.type$ -- 46
+change.case$ -- 24
+chr.to.int$ -- 1106
+cite$ -- 56
+duplicate$ -- 8025
+empty$ -- 9518
+format.name$ -- 163
+if$ -- 22780
 int.to.chr$ -- 0
-int.to.str$ -- 35
-missing$ -- 339
-newline$ -- 208
-num.names$ -- 37
-pop$ -- 648
+int.to.str$ -- 46
+missing$ -- 468
+newline$ -- 276
+num.names$ -- 48
+pop$ -- 1357
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 0
-skip$ -- 622
+skip$ -- 969
 stack$ -- 0
-substring$ -- 10812
-swap$ -- 776
-text.length$ -- 5
+substring$ -- 18087
+swap$ -- 1257
+text.length$ -- 173
 text.prefix$ -- 0
 top$ -- 0
 type$ -- 0
 warning$ -- 10
-while$ -- 284
-width$ -- 37
-write$ -- 447
+while$ -- 448
+width$ -- 48
+write$ -- 589
 (There were 10 warnings)
