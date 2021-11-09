@@ -91,6 +91,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 	Examples include calculating color values for many pixels on a screen in the titular graphics processing, or the weights in a large neural network.
 	While there do exists parallelized algorithms to solve general differential equations~\cite{lions_resolution_2001}, there are properties specific to the spin system that allow for much more fast and elegant parallelization in our use-case.
 	We use these properties (see \emph{\nameref{sec:parallelization}}) to write a parallel, GPU based solver that runs faster than industry standard non-parallel algorithms by three orders of magnitude.
+	% Mention GPU in fewer words
 
 	Second, the Schr\"odinger equation has the geometric property of being norm persevering.
 	In other words, the time-evolution operator for a system between two points in time must be unitary.
@@ -99,7 +100,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 	To avoid this, we use a geometric integration technique for our solver (see \emph{\nameref{sec:magnus}}).
 
 	Third, our system (and similar spin systems) can be very oscillatory.
-	In standard conditions for our application, the expected spin projection of a system that we want to solve for can rotate in physical space (alternatively viewed as a point rotating around an abstract object known as a \emph{Bloch sphere}) at a rate of 700kHz.
+	In standard conditions for our application, the expected spin projection of a system that we want to solve for can rotate in physical space (alternatively viewed as a point rotating around an abstract object known as a \emph{Bloch sphere}) at a rate of 700kHz. % Too specific
 	Standard integration methods require very small time-steps in order to accurately depict these oscillations.
 	For this reason we use a fourth order Magnus expansion~\cite{magnus_exponential_1954,blanes_magnus_2009} based solver for our geometric integrator to make larger time-steps accurate (see \emph{\nameref{sec:magnus}}).
 	We also use a dynamically changing rotating frame to slow down the effective rotations in the system, and thus reduce the size of integration steps being done, making each step more accurate (see \emph{\nameref{sec:rotating_frame}}).
@@ -108,7 +109,7 @@ Time dependent Schr\"odinger equation; Quantum; Physics; Spin one; Spin half; In
 
 	
 
-	\subsection{Recent literature}
+	\subsection{Recent literature} % Recent relevant software? Recent software with similar functionality
 		While we benchmark \emph{Spinsim} only against industry standard integrators, we also note that application specific quantum numerical simulator packages are regularly being released.
 		However, none of these packages are designed specific to quantum sensing, and so these releases are not suitable for simulations highly accurate at high time resolutions required in that field.
 
@@ -1006,9 +1007,9 @@ English.
 
 \section{(3) Reuse potential}
 
-	\subsection{Use potential and limitations}
+	\subsection{Applications}
 		The \emph{Spinsim} package will be useful for any research group needing quick, accurate, and/or large numbers of simulations involving spin-half or spin-one systems.
-		In particular, the package can simulate a system with complicated (ie not just hard pulses), analytic driving fields, with no approximations like the RWA required, at a high time resolution.
+		In particular, the package can simulate a system with complicated (ie not just hard pulses), analytic driving fields, with no approximations like the RWA required, at a high time resolution.% Frequency, amplitude and phase modulation; multiple tones; narrow-band interference; Radiation in control Hamiltonian; interesting polarisation
 		We stress that many application specific simulators are designed for the paradigm of using the RWA and/or hard pulse approximations~\cite{suzuki_qulacs_2021, teske_qopt_2021, isakov_simulations_2021}, which both sacrifice accuracy for the sake of speed.
 		While this is viable for some areas of physics research, when designing quantum sensing protocols, we need to take all effects of the spin system and surrounding lab environment into account.
 		Thus, \emph{Spinsim}'s primary use is to fill in this gap of simulators for use of developing new quantum sensing protocols with spin-half and spin-one systems, and so should be useful to many within the field of quantum sensing.
@@ -1022,7 +1023,7 @@ English.
 		The \emph{Spinsim} package was written to simulate possible measurement protocols for this, showing the behaviour of the array of spin-one atoms interacting with the magnetic fields of the neurons, control signals, and the lab environment.
 
 		So far, the package has also been used to produce simulations for four other new and conceptually distinct quantum sensing protocols from members of the Monash University School of Physics \& Astronomy spinor BEC lab.
-		Included in this were some honors projects, where \emph{Spinsim} allowed for many quick simulations in the limited time available.
+		Included in this were some honors projects, where \emph{Spinsim} allowed for many quick simulations in the limited time available. % People who have not used quantum computation before have managed to do this
 
 		Another example of spin based magnetic field sensing is the use of nitrogen vacancy centres (NVCs).
 		These are spin-one structures found in diamond, doped with Nitrogen atoms.
@@ -1036,7 +1037,7 @@ English.
 		As a result, despite being fast at simulating qubits, it is inappropriate for the package to be used for quantum computing.
 		In addition, \emph{Spinsim} is currently designed to integrate the time evolution of pure states only, meaning it is only accurate for the duration that the physical spin system is coherent.
 		While ultracold atoms can be coherent for tens of seconds, to the point where decoherence is negligible for most quantum sensing experiments, NVCs have a much shorter coherence time of up to $ 1\,\text{ms} $~\cite{degen_quantum_2017}, so fewer simulations are accurate while ignoring decoherence.
-		Not being able to model decoherence also means that \emph{Spinsim} may not be adequate for use in some nuclear magnetic resonance (NMR) applications where relaxation is important, such as those covered by \emph{SpinEvolution}~\cite{veshtort_spinevolution_2006}, for example.
+		Not being able to model decoherence also means that \emph{Spinsim} may not be adequate for use in some nuclear magnetic resonance (NMR) applications where relaxation is important, such as those covered by \emph{SpinEvolution}~\cite{veshtort_spinevolution_2006}, for example. % Too much negativity; Long and adiabatic pulse sequences; simulate in the lab frame, end up with bloch-seigert shifts; targeted at individual quanta, separate regime
 
 		With these restrictions in mind, \emph{Spinsim} could be used for some simplified simulations in various areas of NMR.
 		There are many atomic nuclei with spins of half (eg protons, Carbon 13) and, and some that have spins of one (eg Lithium 6, Nitrogen 14)~\cite{fuller_nuclear_1976}, which, if relaxation and interactions between systems are not important for the application, \emph{Spinsim} could be used to simulate for spectroscopy experiments, for example.
