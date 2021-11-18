@@ -61,7 +61,7 @@ And the source code can be cloned from the git repository
 
    git clone https://github.com/alexander-tritt-monash/spinsim.git
 
-:mod:`spinsim` uses `poetry <https://python-poetry.org/>` as a package manager.
+:mod:`spinsim` uses `poetry <https://python-poetry.org/>`_ as a package manager.
 One can build and install from the source code using `poetry` commands.
 
 To use the (default) cuda GPU parallelisation, one needs to have a `cuda compatible Nvidia GPU <https://developer.nvidia.com/cuda-gpus>`_.
