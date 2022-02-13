@@ -21,29 +21,30 @@ Bellow is a basic example of evaluating the state and bloch vector for simulatin
 
 .. code-block:: python
 
-   import spinsim
-   import numpy as np
-   import matplotlib.pyplot as plt
+    import spinsim
+    import matplotlib.pyplot as plt
+    import math
 
-   def get_field_larmor(time_sample, field_modifier, field_sample):
-      field_sample[0] = 0            # Zero field in x direction
-      field_sample[1] = 0            # Zero field in y direction
-      field_sample[2] = 1000         # Split spin z eigenstates by 1kHz
+    # Define field for spin system
+    def get_field_larmor(time_sample, sweep_parameters, field_sample):
+        field_sample[0] = 0              # Zero field in x direction
+        field_sample[1] = 0              # Zero field in y direction
+        field_sample[2] = math.tau*1000  # Split spin z eigenstates by 1kHz
 
-   simulator_larmor = spinsim.Simulator(get_field_larmor, spinsim.SpinQuantumNumber.HALF)
+    # Initialise simulator instance
+    simulator_larmor = spinsim.Simulator(get_field_larmor, spinsim.SpinQuantumNumber.HALF)
+    # Evaluate a simulation
+    results_larmor = simulator_larmor.evaluate(0e-3, 100e-3, 100e-9, 500e-9, spinsim.SpinQuantumNumber.HALF.plus_x)
 
-   state_init = np.asarray([1/np.sqrt(2), 1/np.sqrt(2)], np.cdouble)
-
-   results_larmor = simulator_larmor.evaluate(0, 0e-3, 100e-3, 100e-9, 500e-9, state_init)
-
-   plt.figure()
-   plt.plot(results_larmor.time, results_larmor.spin)
-   plt.legend(["x", "y", "z"])
-   plt.xlim(0e-3, 2e-3)
-   plt.xlabel("time (s)")
-   plt.ylabel("spin expectation (hbar)")
-   plt.title("Spin projection for Larmor precession")
-   plt.show()
+    # Plot results
+    plt.figure()
+    plt.plot(results_larmor.time, results_larmor.spin)
+    plt.legend(["x", "y", "z"])
+    plt.xlim(0e-3, 2e-3)
+    plt.xlabel("time (s)")
+    plt.ylabel("spin expectation (hbar)")
+    plt.title("Spin projection for Larmor precession")
+    plt.show()
 
 This results in
 
