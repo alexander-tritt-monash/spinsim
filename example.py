@@ -1,3 +1,4 @@
+# Example 1:
 import spinsim
 import matplotlib.pyplot as plt
 import math
@@ -23,6 +24,7 @@ plt.ylabel("spin expectation (hbar)")
 plt.title("Spin projection for Larmor precession")
 plt.show()
 
+# Example 2:
 import spinsim
 import matplotlib.pyplot as plt
 import math

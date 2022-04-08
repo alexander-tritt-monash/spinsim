@@ -572,6 +572,177 @@ The integration and time resolution can be seen in the following,
 Time steps this coarse are able to be used because of the commutator free Magnus based integrator being used.
 Each step (in blue) uses two samples (in magenta) to sample the pulse shape (in black).
 
+Example 4: Using the interpolator
+---------------------------------
+
+This example introduces the interpolator generator that can be used to define the field function in terms of a sampled time series rather than mathematical functions.
+Some examples of the wide variety of tasks that can be done with this are:
+
+* Run simulations based off of magnetic field values already measured in your lab
+* Define smooth functions more complicated than those allowed with :obj:`numpy` and :obj:`math`...
+* ... including adding simulated noise to the system
+* Easily define a set of hard pulses in the rotating frame that turn on and off at arbitrary points in time...
+* ... or use the output to modulate sinusoids and just run the hard pulse simulation in the lab frame instead
+* Similarly, easily define linear ramped pulses in the rotating and lab frames
+
+In this example we focus on adding noise to the system.
+The process here is essentially the same as that for reading in recorded field amplitudes.
+
+Full code
+.........
+
+.. code-block:: python
+
+    import spinsim
+    import matplotlib.pyplot as plt
+    import math
+    import numpy as np
+
+    # Generate noise
+    time_sampled = np.arange(0, 100e-3, 1e-3)
+    larmor_sampled = np.random.randn(time_sampled.size)
+
+    # Generate the interpolator
+    larmor_interpolator = spinsim.generate_interpolation_sampler(time_sampled, larmor_sampled)
+    def get_field_larmor_interpolator(time_sample, user_parameters, field_sample):
+        # We can vary the noise amplitude per simulation using user_parameters
+        noise_amplitude = user_parameters[0]
+        field_sample[2] = math.tau*(200 + noise_amplitude*larmor_interpolator(time_sample))
+
+        field_sample[0] = 0
+        field_sample[1] = 0
+        field_sample[3] = 0
+
+    # Simulate the system with first without noise, then with noise
+    simulator_larmor_interpolator = spinsim.Simulator(get_field_larmor_interpolator, spinsim.SpinQuantumNumber.ONE)
+    results_larmor = simulator_larmor_interpolator.evaluate(0, 100e-3, 1e-6, 10e-6, spinsim.SpinQuantumNumber.ONE.plus_x, [0])
+    results_larmor_interpolator = simulator_larmor_interpolator.evaluate(0, 100e-3, 1e-6, 10e-6, spinsim.SpinQuantumNumber.ONE.plus_x, [50])
+
+    # Visualise the interpolation
+    larmor_interpolator_plot = spinsim.generate_interpolation_sampler(time_sampled, larmor_sampled, device = spinsim.Device.CPU)
+    time_plot = np.arange(0, 100e-3, 100e-6)
+    larmor_plot = np.zeros(time_plot.size)
+    for time_index in range(time_plot.size):
+        larmor_plot[time_index] = 200 + 50*larmor_interpolator_plot(time_plot[time_index])
+
+    # Plot
+    plt.figure()
+    plt.plot(time_sampled, 200 + 50*larmor_sampled, "r.", label = "\"Recorded\" amplitudes")
+    plt.plot(time_plot, larmor_plot, "b-", label = "Interpolated amplitudes")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Z field amplitude (Hz)")
+    plt.legend()
+    plt.ylim(0, 400)
+    plt.title("Noisy Larmor interpolation\nField timeseries")
+    plt.savefig("interpolation_example_1_timeseries.png")
+    plt.savefig("interpolation_example_1_timeseries.pdf")
+    plt.draw()
+
+    plt.figure()
+    plt.plot(results_larmor_interpolator.time, results_larmor.spin[:, 0], "g-", label = "No noise")
+    plt.plot(results_larmor_interpolator.time, results_larmor_interpolator.spin[:, 0], "m-", label = "Noise")
+    plt.xlabel("Time (ms)")
+    plt.ylabel("Expected spin x projection (hbar)")
+    plt.legend()
+    plt.title("Noisy Larmor interpolation\nField timeseries")
+    plt.savefig("interpolation_example_1_results.png")
+    plt.savefig("interpolation_example_1_results.pdf")
+    plt.draw()
+
+    plt.show()
+
+Explanation
+...........
+
+After importing some standard libraries, we generate some white (up to the sampling frequency) using :obj:`numpy.random.randn`.
+In this way we generate an array :obj:`amplitude_sampled` that is IID and follows :math:`N(0, 1)`.
+Because the interpolator works with a non-uniform sampling rate, we also need to define an array of sampling times :obj:`time_sampled`.
+
+.. code-block:: python
+
+    time_sampled = np.arange(0, 100e-3, 1e-3)
+    larmor_sampled = np.random.randn(time_sampled.size)
+
+Next, we simply enter this time and amplitude data into :obj:`spinsim.generate_interpolation_sampler`, which returns a callable that can be used within a :obj:`get_field` function.
+
+.. code-block:: python
+
+    larmor_interpolator = spinsim.generate_interpolation_sampler(time_sampled, larmor_sampled)
+
+Now we can define such a function.
+Here we are simulating basic Larmor precession again, but with our simulated noise on top of the bias value.
+Since the generated noise is mean zero and standard deviation one, we use :obj:`user_parameters[0]` to scale it and define the noise amplitude (or just turn it off).
+
+.. code-block:: python
+
+    def get_field_larmor_interpolator(time_sample, user_parameters, field_sample):
+        # We can vary the noise amplitude per simulation using user_parameters
+        noise_amplitude = user_parameters[0]
+        field_sample[2] = math.tau*(200 + noise_amplitude*larmor_interpolator(time_sample))
+
+        field_sample[0] = 0
+        field_sample[1] = 0
+        field_sample[3] = 0
+
+Next, we define our :obj:`spinsim.Simulator` object and evaluate.
+We simulate once with no noise (:obj:`user_parameters = [0]`) and once with a noise amplitude of 50 Hz for comparison (:obj:`user_parameters = [50]`).
+
+.. code-block:: python
+
+    simulator_larmor_interpolator = spinsim.Simulator(get_field_larmor_interpolator, spinsim.SpinQuantumNumber.ONE)
+    results_larmor = simulator_larmor_interpolator.evaluate(0, 100e-3, 1e-6, 10e-6, spinsim.SpinQuantumNumber.ONE.plus_x, [0])
+    results_larmor_interpolator = simulator_larmor_interpolator.evaluate(0, 100e-3, 1e-6, 10e-6, spinsim.SpinQuantumNumber.ONE.plus_x, [50])
+
+We are just about ready to plot our results, but before we do so, we may well like to plot what the interpolator is doing as well.
+If we are using :obj:`spinsim.Device.CUDA` as the :obj:`device` for the interpolator to compile to (the default if a cuda compatible GPU is found on the system), then this cannot be done directly in python with the interpolator we defined before (unless you want to write a GPU kernel in :obj:`numba.cuda` to do so).
+This is because the interpolator will only work on GPU.
+Luckily, we can still see what the interpolator is doing by compiling it for CPU instead by setting the optional :obj:`device` argument to :obj:`spinsim.Device.CPU`.
+
+.. code-block:: python
+
+    larmor_interpolator_plot = spinsim.generate_interpolation_sampler(time_sampled, larmor_sampled, device = spinsim.Device.CPU)
+    time_plot = np.arange(0, 100e-3, 100e-6)
+    larmor_plot = np.zeros(time_plot.size)
+    for time_index in range(time_plot.size):
+        larmor_plot[time_index] = 200 + 50*larmor_interpolator_plot(time_plot[time_index])
+
+Finally we can plot the interpolator visualisation, as well as out simulation results.
+
+.. code-block:: python
+
+    plt.figure()
+    plt.plot(time_sampled, 200 + 50*larmor_sampled, "r.", label = "\"Recorded\" amplitudes")
+    plt.plot(time_plot, larmor_plot, "b-", label = "Interpolated amplitudes")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Z field amplitude (Hz)")
+    plt.legend()
+    plt.ylim(0, 400)
+    plt.title("Noisy Larmor interpolation\nField timeseries")
+    plt.savefig("interpolation_example_1_timeseries.png")
+    plt.savefig("interpolation_example_1_timeseries.pdf")
+    plt.draw()
+
+    plt.figure()
+    plt.plot(results_larmor_interpolator.time, results_larmor.spin[:, 0], "g-", label = "No noise")
+    plt.plot(results_larmor_interpolator.time, results_larmor_interpolator.spin[:, 0], "m-", label = "Noise")
+    plt.xlabel("Time (ms)")
+    plt.ylabel("Expected spin x projection (hbar)")
+    plt.legend()
+    plt.title("Noisy Larmor interpolation\nField timeseries")
+    plt.savefig("interpolation_example_1_results.png")
+    plt.savefig("interpolation_example_1_results.pdf")
+    plt.draw()
+
+    plt.show()
+
+We can see that the interpolator is using cubic interpolation (the default) to smoothly move between sampled values.
+
+.. image:: ../../images/interpolation_example_1_timeseries.png
+
+When noise is added to the simulation, the output begins to differ from what we expect.
+
+.. image:: ../../images/interpolation_example_1_results.png
+
 .. References
 .. ----------
 

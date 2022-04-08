@@ -270,7 +270,7 @@ class Device(Enum):
 
 class Results:
     """
-    The results of a an evaluation of the integrator.
+    The results of an evaluation of the integrator.
 
     Attributes
     ----------
@@ -622,6 +622,25 @@ class Simulator:
         if integration_method == IntegrationMethod.MAGNUS_CF4:
             @jit_device_template("(float64[:], float64, float64, float64, float64[:, :], float64, complex128[:])")
             def get_field_integration_magnus_cf4(sweep_parameters, time_fine, time_coarse, time_step_integration, field_sample, rotating_wave, rotating_wave_winding):
+                field_sample[0, 0] = 0
+                field_sample[0, 1] = 0
+                field_sample[0, 2] = 0
+                field_sample[1, 0] = 0
+                field_sample[1, 1] = 0
+                field_sample[1, 2] = 0
+                if lie_dimension > 3:
+                    field_sample[0, 3] = 0
+                    field_sample[1, 3] = 0
+                    if lie_dimension > 4:
+                        field_sample[0, 4] = 0
+                        field_sample[0, 5] = 0
+                        field_sample[0, 6] = 0
+                        field_sample[0, 7] = 0
+                        field_sample[1, 4] = 0
+                        field_sample[1, 5] = 0
+                        field_sample[1, 6] = 0
+                        field_sample[1, 7] = 0
+                
                 time_sample = ((time_fine + 0.5*time_step_integration*(1 - 1/sqrt3)) - time_coarse)
                 rotating_wave_winding[0] = cmath.exp(1j*rotating_wave*time_sample)
                 time_sample += time_coarse
@@ -643,16 +662,26 @@ class Simulator:
                 field_sample[2, 0] = time_step_integration*(w0*field_sample[0, 0] + w1*field_sample[1, 0])
                 field_sample[2, 1] = time_step_integration*(w0*field_sample[0, 1] + w1*field_sample[1, 1])
                 field_sample[2, 2] = time_step_integration*(w0*field_sample[0, 2] + w1*field_sample[1, 2])
-                if dimension > 2:
+                if lie_dimension > 3:
                     field_sample[2, 3] = time_step_integration*(w0*field_sample[0, 3] + w1*field_sample[1, 3])
+                    if lie_dimension > 4:
+                        field_sample[2, 4] = time_step_integration*(w0*field_sample[0, 4] + w1*field_sample[1, 4])
+                        field_sample[2, 5] = time_step_integration*(w0*field_sample[0, 5] + w1*field_sample[1, 5])
+                        field_sample[2, 6] = time_step_integration*(w0*field_sample[0, 6] + w1*field_sample[1, 6])
+                        field_sample[2, 7] = time_step_integration*(w0*field_sample[0, 7] + w1*field_sample[1, 7])
 
                 append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_output)
 
                 field_sample[2, 0] = time_step_integration*(w1*field_sample[0, 0] + w0*field_sample[1, 0])
                 field_sample[2, 1] = time_step_integration*(w1*field_sample[0, 1] + w0*field_sample[1, 1])
                 field_sample[2, 2] = time_step_integration*(w1*field_sample[0, 2] + w0*field_sample[1, 2])
-                if dimension > 2:
+                if lie_dimension > 3:
                     field_sample[2, 3] = time_step_integration*(w1*field_sample[0, 3] + w0*field_sample[1, 3])
+                    if lie_dimension > 4:
+                        field_sample[2, 4] = time_step_integration*(w1*field_sample[0, 4] + w0*field_sample[1, 4])
+                        field_sample[2, 5] = time_step_integration*(w1*field_sample[0, 5] + w0*field_sample[1, 5])
+                        field_sample[2, 6] = time_step_integration*(w1*field_sample[0, 6] + w0*field_sample[1, 6])
+                        field_sample[2, 7] = time_step_integration*(w1*field_sample[0, 7] + w0*field_sample[1, 7])
 
                 append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_output)
 
@@ -662,6 +691,25 @@ class Simulator:
         elif integration_method == IntegrationMethod.HEUN:
             @jit_device_template("(float64[:], float64, float64, float64, float64[:, :], float64, complex128[:])")
             def get_field_integration_heun(sweep_parameters, time_fine, time_coarse, time_step_integration, field_sample, rotating_wave, rotating_wave_winding):
+                field_sample[0, 0] = 0
+                field_sample[0, 1] = 0
+                field_sample[0, 2] = 0
+                field_sample[1, 0] = 0
+                field_sample[1, 1] = 0
+                field_sample[1, 2] = 0
+                if lie_dimension > 3:
+                    field_sample[0, 3] = 0
+                    field_sample[1, 3] = 0
+                    if lie_dimension > 4:
+                        field_sample[0, 4] = 0
+                        field_sample[0, 5] = 0
+                        field_sample[0, 6] = 0
+                        field_sample[0, 7] = 0
+                        field_sample[1, 4] = 0
+                        field_sample[1, 5] = 0
+                        field_sample[1, 6] = 0
+                        field_sample[1, 7] = 0
+
                 time_sample = time_fine - time_coarse
                 rotating_wave_winding[0] = cmath.exp(1j*rotating_wave*time_sample)
                 time_sample += time_coarse
@@ -680,16 +728,26 @@ class Simulator:
                 field_sample[2, 0] = time_step_integration*field_sample[0, 0]/2
                 field_sample[2, 1] = time_step_integration*field_sample[0, 1]/2
                 field_sample[2, 2] = time_step_integration*field_sample[0, 2]/2
-                if dimension > 2:
+                if lie_dimension > 3:
                     field_sample[2, 3] = time_step_integration*field_sample[0, 3]/2
+                    if lie_dimension > 4:
+                        field_sample[2, 4] = time_step_integration*field_sample[0, 4]/2
+                        field_sample[2, 5] = time_step_integration*field_sample[0, 5]/2
+                        field_sample[2, 6] = time_step_integration*field_sample[0, 6]/2
+                        field_sample[2, 7] = time_step_integration*field_sample[0, 7]/2
 
                 append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_output)
 
                 field_sample[2, 0] = time_step_integration*field_sample[1, 0]/2
                 field_sample[2, 1] = time_step_integration*field_sample[1, 1]/2
                 field_sample[2, 2] = time_step_integration*field_sample[1, 2]/2
-                if dimension > 2:
+                if lie_dimension > 3:
                     field_sample[2, 3] = time_step_integration*field_sample[1, 3]/2
+                    if lie_dimension > 4:
+                        field_sample[2, 4] = time_step_integration*field_sample[1, 4]/2
+                        field_sample[2, 5] = time_step_integration*field_sample[1, 5]/2
+                        field_sample[2, 6] = time_step_integration*field_sample[1, 6]/2
+                        field_sample[2, 7] = time_step_integration*field_sample[1, 7]/2
 
                 append_exponentiation(field_sample[2, :], time_evolution_fine, time_evolution_output)
 
@@ -699,6 +757,17 @@ class Simulator:
         elif integration_method == IntegrationMethod.EULER:
             @jit_device_template("(float64[:], float64, float64, float64, float64[:, :], float64, complex128[:])")
             def get_field_integration_euler(sweep_parameters, time_fine, time_coarse, time_step_integration, field_sample, rotating_wave, rotating_wave_winding):
+                field_sample[0, 0] = 0
+                field_sample[0, 1] = 0
+                field_sample[0, 2] = 0
+                if lie_dimension > 3:
+                    field_sample[0, 3] = 0
+                    if lie_dimension > 4:
+                        field_sample[0, 4] = 0
+                        field_sample[0, 5] = 0
+                        field_sample[0, 6] = 0
+                        field_sample[0, 7] = 0
+
                 time_sample = time_fine + 0.5*time_step_integration - time_coarse
                 rotating_wave_winding[0] = cmath.exp(1j*rotating_wave*time_sample)
                 time_sample += time_coarse
@@ -711,8 +780,13 @@ class Simulator:
                 field_sample[0, 0] = time_step_integration*field_sample[0, 0]
                 field_sample[0, 1] = time_step_integration*field_sample[0, 1]
                 field_sample[0, 2] = time_step_integration*field_sample[0, 2]
-                if dimension > 2:
+                if lie_dimension > 3:
                     field_sample[0, 3] = time_step_integration*field_sample[0, 3]
+                    if lie_dimension > 4:
+                        field_sample[0, 4] = time_step_integration*field_sample[0, 4]
+                        field_sample[0, 5] = time_step_integration*field_sample[0, 5]
+                        field_sample[0, 6] = time_step_integration*field_sample[0, 6]
+                        field_sample[0, 7] = time_step_integration*field_sample[0, 7]
 
                 append_exponentiation(field_sample[0, :], time_evolution_fine, time_evolution_output)
 
@@ -1127,7 +1201,7 @@ class Utilities:
 
         .. math::
             \\begin{align*}
-            (A)_{i, j} &= \\0
+            (A)_{i, j} &= 0
             \\end{align*}
 
         Parameters:
@@ -1863,3 +1937,211 @@ class Utilities:
         self.matrix_exponential_lie_trotter = matrix_exponential_lie_trotter
         self.matrix_exponential_lie_trotter_8 = matrix_exponential_lie_trotter_8
         self.matrix_square_m1 = matrix_square_m1
+
+def generate_interpolation_sampler(time:np.ndarray, amplitude:np.ndarray, order = 3, zero_boundary = True, device:Device = None):
+    """
+    Uses a user provided time series to create a field sampling function that is compatible with the :obj:`Simulator` object.
+    Samples in the time series do not have to be equally spaced, and as such the user much specify a :class:`numpy.ndarray` for both :obj:`time` and :obj:`amplitude`.
+
+    .. note::
+        These interpolators can be set up in a variety of ways, such pulse trains where the output modulates a sinusoid.
+        See the examples to learn more.
+
+    The sampler can be defined to use one of three kinds of interpolation, defined by the parameter :obj:`order`.
+    Below we use :math:`t_j` and :math:`b_j` for the time and amplitude samples respectively, :math:`t` for the sampling time, and :math:`\\omega(t)` for the field value at the sampling time.
+
+    Use :obj:`order` = 0 to use the Zero Order Hold (ZOH) protocol:
+
+    .. math::
+        \\omega_a(t) += b_j \\quad \\text{for } t_j < t < t_{j + 1}
+
+    This method can be used for simulating hard pulse trains.
+
+    Use :obj:`order` = 1 to use the linear interpolation (LERP) protocol:
+
+    .. math::
+        \\tau =& \\frac{t - t_j}{t_{j + 1} - t_j},\\\\
+        \\omega_a(t) +=& (1 - \\tau) b_j + \\tau b_{j + 1} \\quad \\text{for } t_j < t < t_{j + 1}
+
+    This method can be used for simulating linear ramps.
+    
+    Use :obj:`order` = 3 to use the cubic Hermite spline using the finite difference gradient:
+
+    .. math::
+        \\tau =& \\frac{t - t_j}{t_{j + 1} - t_j},\\\\
+        m_j =& \\frac12 \\left( \\frac{b_{j + 1} - b_j}{t_{j + 1} - t_j} + \\frac{b_j - b_{j - 1}}{t_j - t_{j - 1}} \\right) \\\\
+        \\omega_a(t) +=& (2\\tau^3 - 3\\tau^2 + 1) b_j + (-2\\tau^3 + 3\\tau^2) b_{j + 1} + (\\tau^3 - 2\\tau^2 + \\tau) (t_{j + 1} - t_j) m_j \\\\ &+ (\\tau^3 - \\tau^2) (t_{j + 1} - t_j) m_{j + 1} \\quad \\text{for } t_j < t < t_{j + 1}
+
+    This method is best for simulating based off of recorded traces or smooth functions that cannot be constructed with basic functions in :obj:`math` or :obj:`numpy`.
+
+    For any value of :obj:`order`, if :math:`t < t_0` or :math:`t > t_\\text{end}` then there are two options.
+    If :obj:`zero_boundary` is set to :obj:`True` (default), then :math:`\\omega_a(t) = 0`.
+    Otherwise, if :math:`t < t_0`, then  :math:`\\omega_a(t) = b_0`, and if :math:`t > t_\\text{end}`, then  :math:`\\omega_a(t) = b_\\text{end}`.
+
+
+    Parameters
+    ----------
+    time : :obj:`numpy.ndarray` of :obj:`numpy.float64 (time_index)`
+        The times that correspond to the sampled amplitudes in :obj:`amplitude`. Note that times do not have to be equally spaced.
+    amplitude : :obj:`numpy.ndarray` of :obj:`numpy.float64 (time_index)`
+        The sampled amplitudes to be interpolated between.
+    order : :obj:`int`
+        The interpolation method to be used by the interpolator.
+        Defaults to 3 (for cubic interpolation).
+        For more information, see above.
+    zero_boundary : :obj:`bool`
+        Whether or not the boundaries (ie times before the first and after the final sample) should be zero padded.
+        Defaults to :obj:`True` (they will be zero padded).
+        For more information, see above.
+    device : :obj:`Device`
+        The device that the interpolator should be compiled to.
+        If :obj:`None` (the default), it will compile to CUDA if a CUDA compatible device is found, and multithread CPU otherwise.
+        To be used with a :obj:`Simulator` instance, you must select the same device as the one selected by that.
+        If the interpolator used in a context outside of :obj:`spinsim` (plotting the interpolator output, for example), then you must select :obj:`Device.CPU` or :obj:`Device.CPU_SINGLE`.
+
+    Returns
+    -------
+    sampler : :obj:`callable`
+        An interpolating function based off the time series that can be used as or within a :func:`get_field` function for a :obj:`Simulator` instance.
+
+        Parameters:
+
+        * **time_sample** (:obj:`float`) - The time at which to sample the timeseries.
+
+        * **user_parameters** (:class:`numpy.ndarray` of :class:`numpy.float64`, (parameter_index)) - Unused here, but a required format for the :obj:`Simulator` instance to read.
+        
+        * **field_sample** (:class:`numpy.ndarray` of :class:`numpy.float64`, (y_index, x_index)) - The array of field values that this function adds to.
+
+        Returns:
+
+        * **field_sample** (:obj:`float`) - The interpolated value of the amplitude.
+    """
+
+    if not device:
+        if cuda.is_available():
+            device = Device.CUDA
+        else:
+            device = Device.CPU
+
+    @device.jit_device
+    def find_time_index(time_sample):
+        # See if in bounds
+        if time[0] <= time_sample and time_sample <= time[-1]:
+            # Find time index
+            # Start with assuming equal spacing, check if this is true
+            time_sample_index = int((time_sample - time[0])/(time[1] - time[0]))
+            low_enough = False
+            high_enough = True
+            if time_sample_index + 1 < time.size:
+                low_enough = time[time_sample_index] <= time_sample
+                high_enough = time_sample <= time[time_sample_index + 1]
+            else:
+                time_sample_index = time.size
+            if not (low_enough and high_enough):
+                # If it didn't work, use bisection rule
+                time_sample_index_max = time.size - 1
+                time_sample_index_min = 0
+                get_out_of_here = time.size
+                while not (low_enough and high_enough):
+                    if not low_enough:
+                        time_sample_index_max = time_sample_index
+                    else:
+                        time_sample_index_min = time_sample_index
+                    time_sample_index = int(float(time_sample_index_max + time_sample_index_min)/2)
+                    low_enough = False
+                    high_enough = True
+                    if time_sample_index + 1 < time.size:
+                        low_enough = time[time_sample_index] <= time_sample
+                        high_enough = time_sample <= time[time_sample_index + 1]
+                    get_out_of_here -= 1
+                    if get_out_of_here == 0:
+                        return -1, 0
+            interpolation_parameter = (time_sample - time[time_sample_index])/(time[time_sample_index + 1] - time[time_sample_index])
+            return time_sample_index, interpolation_parameter
+        return -1, 0
+    if amplitude.ndim == 2:
+        raise NotImplementedError("Interpolation sampler does not work with multi-dimensional arrays yet. Try generating a single interpolator for each axis instead.")
+    elif amplitude.ndim == 1:
+        if order == 0:
+            @device.jit_device
+            def sampler(time_sample):
+                field_sample = 0
+                if not zero_boundary:
+                    if time_sample <= time[0]:
+                        field_sample = amplitude[0]
+                        return field_sample
+                    if time_sample >= time[-1]:
+                        field_sample = amplitude[-1]
+                        return field_sample
+                time_index, interpolation_parameter = find_time_index(time_sample)
+                if time_index >= 0:
+                    field_sample = amplitude[time_index]
+                return field_sample
+        elif order == 1:
+            @device.jit_device
+            def sampler(time_sample):
+                field_sample = 0
+                if not zero_boundary:
+                    if time_sample <= time[0]:
+                        field_sample = amplitude[0]
+                        return field_sample
+                    if time_sample >= time[-1]:
+                        field_sample = amplitude[-1]
+                        return field_sample
+                time_index, interpolation_parameter = find_time_index(time_sample)
+                if time_index >= 0 and time_index + 1 < time.size:
+                    field_sample = amplitude[time_index]*(1 - interpolation_parameter) + amplitude[time_index + 1]*interpolation_parameter
+                return field_sample
+        elif order == 3:
+            @device.jit_device
+            def sampler(time_sample):
+                field_sample = 0
+                # Implement boundary conditions:
+                if not zero_boundary:
+                    if time_sample <= time[0]:
+                        field_sample = amplitude[0]
+                        return field_sample
+                    if time_sample >= time[-1]:
+                        field_sample = amplitude[-1]
+                        return field_sample
+
+                # Find the indices to interpolate between:
+                time_index, interpolation_parameter = find_time_index(time_sample)
+                if time_index >= 0 and time_index + 1 < time.size:
+                    # See wikipedia entry https://en.wikipedia.org/wiki/Cubic_Hermite_spline under under the finite difference method to see how this works.
+                    # Find the gradient used for linear interpolarion:
+                    if time[time_index] != time[time_index + 1]:
+                        gradient_mid = (amplitude[time_index + 1] - amplitude[time_index])/(time[time_index + 1] - time[time_index])
+                    else:
+                        gradient_mid = 0
+
+                    # Find the gradient a step to the left:
+                    if time_index == 0:
+                        gradient_left = gradient_mid
+                    elif time[time_index - 1] != time[time_index]:
+                        gradient_left = 0.5*((amplitude[time_index] - amplitude[time_index - 1])/(time[time_index] - time[time_index - 1]) + gradient_mid)
+                    else:
+                        gradient_left = 0
+                    gradient_left *= (time[time_index + 1] - time[time_index])
+
+                    # ... and a step to the right:
+                    if time_index + 2 == time.size:
+                        gradient_right = gradient_mid
+                    elif time[time_index + 1] != time[time_index + 2]:
+                            gradient_right = 0.5*((amplitude[time_index + 2] - amplitude[time_index + 1])/(time[time_index + 2] - time[time_index + 1]) + gradient_mid)
+                    else:
+                        gradient_right = 0
+                    gradient_right *= (time[time_index + 1] - time[time_index])
+
+                    # Finally, interpolate:
+                    field_sample = \
+                        amplitude[time_index]*(2*interpolation_parameter**3 - 3*interpolation_parameter**2 + 1) \
+                        + amplitude[time_index + 1]*(-2*interpolation_parameter**3 + 3*interpolation_parameter**2) \
+                        + gradient_left*(interpolation_parameter**3 - 2*interpolation_parameter**2 + interpolation_parameter) \
+                        + gradient_right*(interpolation_parameter**3 - interpolation_parameter**2)
+                return field_sample
+        else:
+            raise NotImplementedError(f"Interpolation order {order} is not implemented. Try order 0 (zero order hold), 1 (linear) or 3 (cubic).")
+
+
+    return sampler

@@ -36,11 +36,11 @@ sys.path.append(os.path.abspath("../../../"))
 # -- Project information -----------------------------------------------------
 
 project = 'spinsim'
-copyright = '2020, Monash University'
+copyright = '2022, Monash University'
 author = 'Alexander Tritt'
 
 # The full version, including alpha/beta/rc tags
-release = '0.4.16'
+release = '0.5.0'
 
 
 # -- General configuration ---------------------------------------------------
