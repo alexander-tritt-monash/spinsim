@@ -37,6 +37,13 @@ Blanes S, Casas F, Oteo JA, Ros J.
 \newblock Available from:
   \url{http://www.sciencedirect.com/science/article/pii/S0370157308004092}.
 
+\bibitem{candoli_pulsee_2021}
+Candoli D, Sanna S, Mitrović VF.
+\newblock {PULSEE}: {A} software for the quantum simulation of an extensive set
+  of nuclear magnetic and quadrupole resonance observables.
+\newblock arXiv:210702737 [physics, physics:quant-ph]. 2021 Aug.
+\newblock Available from: \url{https://arxiv.org/abs/2108.11415v1}.
+
 \bibitem{griewank_who_2012}
 Griewank A.
 \newblock Who {Invented} the {Reverse} {Mode} of {Differentiation}?
@@ -70,13 +77,6 @@ Dalgaard M, Motzoi F.
 \newblock Fast, high precision dynamics in quantum optimal control theory.
 \newblock arXiv:210702737 [physics, physics:quant-ph]. 2021 Oct.
 \newblock Available from: \url{https://arxiv.org/abs/2110.06187v1}.
-
-\bibitem{candoli_pulsee_2021}
-Candoli D, Sanna S, Mitrović VF.
-\newblock {PULSEE}: {A} software for the quantum simulation of an extensive set
-  of nuclear magnetic and quadrupole resonance observables.
-\newblock arXiv:210702737 [physics, physics:quant-ph]. 2021 Aug.
-\newblock Available from: \url{https://arxiv.org/abs/2108.11415v1}.
 
 \bibitem{j_j_sakurai_jun_john_modern_2011}
 {J J Sakurai (Jun John)}.
@@ -294,14 +294,6 @@ Webb JL, Troise L, Hansen NW, Frellsen LF, Osterkamp C, Jelezko F, et~al.
   Jul.
 \newblock ArXiv: 2107.14156.
 \newblock Available from: \url{http://arxiv.org/abs/2107.14156}.
-
-\bibitem{veshtort_spinevolution_2006}
-Veshtort M, Griffin RG.
-\newblock {SPINEVOLUTION}: {A} powerful tool for the simulation of solid and
-  liquid state {NMR} experiments.
-\newblock Journal of Magnetic Resonance. 2006 Feb;178(2):248-82.
-\newblock Available from:
-  \url{http://www.sciencedirect.com/science/article/pii/S1090780705002442}.
 
 \bibitem{fuller_nuclear_1976}
 Fuller GH.
