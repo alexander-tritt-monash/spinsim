@@ -8,11 +8,11 @@ def get_field_rabi(time_sample, sweep_parameters, field_sample):
     field_sample[0] = math.tau*2000*math.cos(sweep_parameters[0]*time_sample)
     field_sample[1] = 0
     field_sample[2] = sweep_parameters[0]   # Split spin z eigenstates by 700kHz
-    field_sample[3] = math.tau*100                        # Zero quadratic shift, found in spin one systems
-    field_sample[4] = math.tau*100
-    field_sample[5] = math.tau*100
-    field_sample[6] = math.tau*100
-    field_sample[7] = math.tau*100
+    field_sample[3] = math.tau*1000
+    field_sample[4] = math.tau*1000
+    field_sample[5] = math.tau*1000
+    field_sample[6] = math.tau*1000
+    field_sample[7] = math.tau*1000
 
 simulator_rabi = spinsim.Simulator(get_field_rabi, spinsim.SpinQuantumNumber.ONE, exponentiation_method = spinsim.ExponentiationMethod.LIE_TROTTER_8)
 
