@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Tritt"
+  given-names: "Alex"
+- family-names: "Morris"
+  given-names: "Joshua"
+- family-names: "Hochstetter"
+  given-names: "Joel"
+- family-names: "Anderson"
+  given-names: "R. P."
+- family-names: "Saunderson"
+  given-names: "James"
+- family-names: "Turner"
+  given-names: "L. D."
+date-released: 2022-04-12
+preferred-citation:
+  type: article
+  title: "Spinsim: a GPU optimized python package for simulating spin-half and spin-one quantum systems"
+  abstract: "The Spinsim python package simulates spin-half and spin-one quantum mechanical systems following a time dependent Shroedinger equation. It makes use of numba.cuda, which is an LLVM (Low Level Virtual Machine) compiler for Nvidia Cuda compatible systems using GPU parallelization. Along with other optimizations, this allows for speed improvements from 3 to 4 orders of magnitude while staying just as accurate, compared to industry standard packages. It is available for installation on PyPI, and the source code is available on github. The initial use-case for the Spinsim will be to simulate quantum sensing-based ultracold atom experiments for the Monash University School of Physics & Astronomy spinor Bose-Einstein condensate (spinor BEC) lab, but we anticipate it will be useful in simulating any range of spin-half or spin-one quantum systems with time dependent Hamiltonians that cannot be solved analytically. These appear in the fields of nuclear magnetic resonance (NMR), nuclear quadrupole resonance (NQR) and magnetic resonance imaging (MRI) experiments and quantum sensing, and with the spin-one systems of nitrogen vacancy centres (NVCs), ultracold atoms, and BECs."
+  authors:
+  - family-names: "Tritt"
+    given-names: "Alex"
+  - family-names: "Morris"
+    given-names: "Joshua"
+  - family-names: "Hochstetter"
+    given-names: "Joel"
+  - family-names: "Anderson"
+    given-names: "R. P."
+  - family-names: "Saunderson"
+    given-names: "James"
+  - family-names: "Turner"
+    given-names: "L. D."
+  url: "https://arxiv.org/abs/2204.05586v1"
+  shorttitle: "Spinsim"
+  language: "en"
+  month: "apr"
+  year: 2022
