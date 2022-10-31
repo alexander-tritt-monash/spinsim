@@ -38,7 +38,7 @@ If used in research, please cite us as:
     }
 
 Alternatively, use a reference manager plugin on this repository to read *CITATION.cff* to automatically add the manuscript to your reference manager.
-Click `here <https://arxiv.org/abs/2204.05586>` to read our preprint.
+Click `here <https://arxiv.org/abs/2204.05586>`_ to read our preprint.
 
 Basic example
 -------------
@@ -76,7 +76,7 @@ This results in
 
 .. image:: https://github.com/alexander-tritt-monash/spinsim/blob/master/images/example_1_1.png
 
-See our `documentation <https://spinsim.readthedocs.io/en/latest/?badge=latest>` for more detailed examples.
+See our `documentation <https://spinsim.readthedocs.io/en/latest/?badge=latest>`_ for more detailed examples.
 
 Repository structure
 --------------------
@@ -86,8 +86,8 @@ Repository structure
 *CITATION.cff* allows for automatic reference manager scanning of this repository.
 
 *spinsim/__init__.py* contains the program itself.
-For information on the program structure, please see our `documentation <https://spinsim.readthedocs.io/en/latest/?badge=latest>`.
-*pyproject.toml* allows one to create builds of this software using `poetry <https://python-poetry.org/>`.
+For information on the program structure, please see our `documentation <https://spinsim.readthedocs.io/en/latest/?badge=latest>`_.
+*pyproject.toml* allows one to create builds of this software using `poetry <https://python-poetry.org/>`_.
 
 *bib/*, *docs/* and *images/* contain the files necessary for producing the documentation, as well as the image in this *README.rst* file.
 
