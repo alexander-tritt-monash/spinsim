@@ -10,6 +10,8 @@ article/article.log
 article/article.out
 article/article.synctex.gz
 
+.vscode/
+
 utilities_old/
 
 gaussian_pulse*
