@@ -1,7 +1,7 @@
 spinsim: a GPU optimised solver of spin one and half quantum systems
 ====================================================================
 
-|bagdgePyPI| |bagdgePyPIDL| |bagdgePyPIV| |bagdgePyPIL| |bagdgeRTFD|
+|bagdgePyPI| |bagdgePyPIDL| |bagdgePyPIV| |bagdgePyPIL| |bagdgeRTFD| |badgePreprint|
 
 .. |bagdgePyPI| image:: https://img.shields.io/pypi/v/spinsim
     :alt: PyPI
