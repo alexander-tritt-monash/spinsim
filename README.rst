@@ -75,7 +75,6 @@ If used in research, please cite us as:
         author = {Tritt, Alex and Morris, Joshua and Hochstetter, Joel and Anderson, R. P. and Saunderson, James and Turner, L. D.},
         month = apr,
         year = {2022},
-        file = {Full Text PDF:C\:\\Users\\atri27\\Zotero\\storage\\HZQB6T7G\\Tritt et al. - 2022 - Spinsim a GPU optimized python package for simula.pdf:application/pdf;Snapshot:C\:\\Users\\atri27\\Zotero\\storage\\AN4C4NGE\\2204.html:text/html},
     }
 
 Alternatively, one can use a reference manager plugin on this repository to read *CITATION.cff* to automatically add the manuscript to your reference manager.
