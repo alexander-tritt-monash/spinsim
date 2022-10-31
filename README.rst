@@ -14,7 +14,7 @@ spinsim: a GPU optimised solver of spin one and half quantum systems
 .. |bagdgeRTFD| image:: https://readthedocs.org/projects/spinsim/badge/?version=latest
     :target: https://spinsim.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
-.. |badgePreprint| image:: https://img.shields.io/badge/Preprint-arXiv-red
+.. |badgePreprint| image:: https://img.shields.io/badge/preprint-arXiv-red
     :target: https://arxiv.org/abs/2204.05586
     :alt: Preprint
 
