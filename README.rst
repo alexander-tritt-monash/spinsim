@@ -37,8 +37,8 @@ If used in research, please cite us as:
         file = {Full Text PDF:C\:\\Users\\atri27\\Zotero\\storage\\HZQB6T7G\\Tritt et al. - 2022 - Spinsim a GPU optimized python package for simula.pdf:application/pdf;Snapshot:C\:\\Users\\atri27\\Zotero\\storage\\AN4C4NGE\\2204.html:text/html},
     }
 
-Alternatively, use a reference manager plugin on this repository to read CITATION.cff to automatically add the manuscript to your reference manager.
-See |badgePreprint| to read our preprint.
+Alternatively, use a reference manager plugin on this repository to read *CITATION.cff* to automatically add the manuscript to your reference manager.
+Click `here <https://arxiv.org/abs/2204.05586>` to read our preprint.
 
 Basic example
 -------------
@@ -76,9 +76,20 @@ This results in
 
 .. image:: https://github.com/alexander-tritt-monash/spinsim/blob/master/images/example_1_1.png
 
-See our documentation |bagdgeRTFD| for more detailed examples.
+See our `documentation <https://spinsim.readthedocs.io/en/latest/?badge=latest>` for more detailed examples.
 
 Repository structure
 --------------------
 
-bib
+*README.rst* is the file you are currently reading.
+*LICENSE.rst* contains the BSD 3-Clause Licence for use of this software.
+*CITATION.cff* allows for automatic reference manager scanning of this repository.
+
+*spinsim/__init__.py* contains the program itself.
+For information on the program structure, please see our `documentation <https://spinsim.readthedocs.io/en/latest/?badge=latest>`.
+*pyproject.toml* allows one to create builds of this software using `poetry <https://python-poetry.org/>`.
+
+*bib/*, *docs/* and *images/* contain the files necessary for producing the documentation, as well as the image in this *README.rst* file.
+
+*example.py*, *full_algebra_example.py*, *gaussian_example.py* and *gaussian_example.py* are plain text files for the examples given in the documentation.
+
