@@ -14,6 +14,9 @@ spinsim: a GPU optimised solver of spin one and half quantum systems
 .. |bagdgeRTFD| image:: https://readthedocs.org/projects/spinsim/badge/?version=latest
     :target: https://spinsim.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
+.. |badgePreprint| image:: https://img.shields.io/badge/Preprint-arXiv-red
+    :target: https://arxiv.org/abs/2204.05586
+    :alt: Preprint
 
 *spinsim* is a python package that simulates spin half and spin one quantum mechanical systems following a time dependent Shroedinger equation. It makes use of the *numba.cuda* llvm compiler, and other optimisations, to allow for fast and accurate evaluation on Nvidia Cuda compatible systems using GPU parallelisation.
 
@@ -49,3 +52,8 @@ Bellow is a basic example of evaluating the state and bloch vector for simulatin
 This results in
 
 .. image:: https://github.com/alexander-tritt-monash/spinsim/blob/master/images/example_1_1.png
+
+Repository structure
+--------------------
+
+bib
