@@ -46,7 +46,7 @@ See :ref:`examples` for a tutorial on how to use the package.
 
 See :ref:`package` for a complete reference to the package.
 
-For more information or the design of the package, or to cite it in your own work, please see the preprint on arxiv: https://arxiv.org/abs/2204.05586
+For more information or the design of the package, or to cite it in your own work, please see the manuscript: https://www.sciencedirect.com/science/article/pii/S0010465523000462 or preprint on arxiv: https://arxiv.org/abs/2204.05586
 
 Installation and requirements
 =============================

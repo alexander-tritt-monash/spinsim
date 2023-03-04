@@ -1,7 +1,7 @@
 Usage and about
 ===============
 
-Click `here <https://arxiv.org/abs/2204.05586>`_ to read our preprint.
+Click `here <https://www.sciencedirect.com/science/article/pii/S0010465523000462>`_ to read our manuscript or `here <https://arxiv.org/abs/2204.05586>`_ to read our preprint.
 
 If used in research, please cite us as:
 
